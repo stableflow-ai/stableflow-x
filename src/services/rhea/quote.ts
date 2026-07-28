@@ -1,12 +1,13 @@
 import Big from "big.js";
 import { rheaSwapApi } from "./client";
 import { buildAppFees } from "./config";
+import { formatFeeItems, resolveQuoteFees, type FeeContext } from "./fee";
 import type {
-  RheaFeeItem,
   RheaNormalizedQuote,
   RheaQuoteRaw,
   RheaQuoteResponse,
 } from "./types";
+import type { TokenChain } from "@/config/chains";
 import { getRouterDisplayName } from "@/services/constants";
 
 const asString = (v: unknown, fallback = "0"): string => {
@@ -20,34 +21,6 @@ const pickOut = (q: RheaQuoteRaw): string => {
 
 const pickMinOut = (q: RheaQuoteRaw): string => {
   return asString(q.minAmountOut ?? pickOut(q));
-};
-
-const pickFee = (q: RheaQuoteRaw): RheaFeeItem[] => {
-  const fee = q.fee;
-  return Array.isArray(fee) ? (fee as RheaFeeItem[]) : [];
-};
-
-const formatFeeItems = (fees: RheaFeeItem[]): { fee: RheaFeeItem[]; totalFeeUsd: number } => {
-  let totalFeeUsd = Big(0);
-  const fee = fees.map((item) => {
-    const decimals = item.token?.decimals ?? 0;
-    let amountFormatted = "0";
-    let amountUsd = 0;
-    try {
-      amountFormatted = Big(item.amount || 0).div(Big(10).pow(decimals)).toFixed();
-      amountUsd = Number(Big(amountFormatted).times(item.token?.usdPrice ?? 0).toFixed(8));
-      totalFeeUsd = totalFeeUsd.plus(amountUsd);
-    } catch {
-      amountFormatted = "0";
-      amountUsd = 0;
-    }
-    return {
-      ...item,
-      amountFormatted,
-      amountUsd,
-    };
-  });
-  return { fee, totalFeeUsd: Number(totalFeeUsd.toFixed(8)) };
 };
 
 const pickPriceImpact = (
@@ -89,7 +62,12 @@ const quoteKey = (q: RheaQuoteRaw, index: number): string => {
   return requestId ? `${router}:${requestId}` : `${router}:${index}:${pickOut(q)}`;
 };
 
-export function normalizeQuote(q: RheaQuoteRaw, index: number, isBest = false): RheaNormalizedQuote {
+export function normalizeQuote(
+  q: RheaQuoteRaw,
+  index: number,
+  isBest = false,
+  ctx: FeeContext = {}
+): RheaNormalizedQuote {
   const router = asString(q.router, "unknown");
   const routerName = getRouterDisplayName(router, asString(q.routerName, "") || undefined);
   const estimatedOut = pickOut(q);
@@ -98,7 +76,7 @@ export function normalizeQuote(q: RheaQuoteRaw, index: number, isBest = false): 
   const route = (q.raw as any)?.route;
   const estimatedOutUsd =
     (q.estimatedOutUsd as string | number | undefined) ?? route?.outputAmountUsd;
-  const { fee, totalFeeUsd } = formatFeeItems(pickFee(q));
+  const { fee, totalFeeUsd } = formatFeeItems(resolveQuoteFees(q, ctx));
   const priceImpact = pickPriceImpact(q, route, estimatedOutUsd);
 
   return {
@@ -137,7 +115,10 @@ export function normalizeQuote(q: RheaQuoteRaw, index: number, isBest = false): 
   };
 }
 
-export function normalizeQuoteResponse(data: RheaQuoteResponse): {
+export function normalizeQuoteResponse(
+  data: RheaQuoteResponse,
+  ctx: FeeContext = {}
+): {
   quotes: RheaNormalizedQuote[];
   bestKey?: string;
   meta: Pick<RheaQuoteResponse, "chainType" | "executionType" | "isCrossChain" | "errors">;
@@ -152,12 +133,12 @@ export function normalizeQuoteResponse(data: RheaQuoteResponse): {
       !!bestRaw &&
       asString(q.router, "") === bestRouter &&
       pickOut(q) === bestOut;
-    return normalizeQuote(q, i, isBest);
+    return normalizeQuote(q, i, isBest, ctx);
   });
 
   // Ensure bestQuote is present even if missing from allQuotes
   if (bestRaw && !quotes.some((q) => q.isBest)) {
-    quotes.unshift(normalizeQuote(bestRaw, -1, true));
+    quotes.unshift(normalizeQuote(bestRaw, -1, true, ctx));
   }
 
   // If still no best flag, mark first by output
@@ -197,8 +178,8 @@ export type QuoteParams = {
   slippage?: number;
   sender: string;
   recipient?: string;
-  fromToken?: { chainName?: string; symbol?: string };
-  toToken?: { chainName?: string; symbol?: string };
+  fromToken?: TokenChain | { chainName?: string; symbol?: string };
+  toToken?: TokenChain | { chainName?: string; symbol?: string };
 };
 
 export async function rheaQuote(params: QuoteParams) {
@@ -223,5 +204,10 @@ export async function rheaQuote(params: QuoteParams) {
     }),
   });
 
-  return normalizeQuoteResponse(data);
+  const ctx: FeeContext = {
+    fromToken: params.fromToken as TokenChain | undefined,
+    toToken: params.toToken as TokenChain | undefined,
+  };
+
+  return normalizeQuoteResponse(data, ctx);
 }

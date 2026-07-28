@@ -254,13 +254,17 @@ export default function Networks({ addressValidation, onRefreshQuote }: Networks
                     )
                     : (
                       hybridPath?.length > 0
-                        ? hybridPath.map((route, idx) => (
+                        ? hybridPath.map((route, idx) => {
+                          const pathLogo = getRouterLogo(String(route.service), true);
+                          return (
                           <>
-                            <LazyImage
-                              key={`simplePathImg${idx}`}
-                              src={getRouterLogo(String(route.service), true)}
-                              containerClassName="w-4 h-4 shrink-0"
-                            />
+                            {pathLogo ? (
+                              <LazyImage
+                                key={`simplePathImg${idx}`}
+                                src={pathLogo}
+                                containerClassName="w-4 h-4 shrink-0"
+                              />
+                            ) : null}
                             {
                               idx < hybridPath.length - 1 && (
                                 <LazyImage
@@ -271,12 +275,18 @@ export default function Networks({ addressValidation, onRefreshQuote }: Networks
                               )
                             }
                           </>
-                        ))
+                          );
+                        })
                         : (
-                          <LazyImage
-                            src={getRouterLogo(quoteData?.router, true)}
-                            containerClassName="w-4 h-4 shrink-0"
-                          />
+                          (() => {
+                            const routerLogo = getRouterLogo(quoteData?.router, true);
+                            return routerLogo ? (
+                              <LazyImage
+                                src={routerLogo}
+                                containerClassName="w-4 h-4 shrink-0"
+                              />
+                            ) : null;
+                          })()
                         )
                     )
                 }

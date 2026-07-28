@@ -37,15 +37,17 @@ const QuoteRoute = (props: any) => {
       }}
     >
       <div className="flex items-center justify-start gap-[5px]">
-        <img
-          src={logo}
-          alt={routerName}
-          title={routerName}
-          className={clsx(
-            "object-left object-contain shrink-0",
-            isMobile ? "size-4" : "w-15.5 h-4",
-          )}
-        />
+        {logo ? (
+          <img
+            src={logo}
+            alt={routerName}
+            title={routerName}
+            className={clsx(
+              "object-left object-contain shrink-0",
+              isMobile ? "size-4" : "w-15.5 h-4",
+            )}
+          />
+        ) : null}
         <span className="text-[11px] text-[#444C59] font-medium hidden md:inline max-w-[90px] truncate">
           {routerName}
         </span>

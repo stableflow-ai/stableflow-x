@@ -137,7 +137,38 @@ export function getRheaNativePrice(fromToken: {
   return 0;
 }
 
+function resolveTokenAlias(token: TokenChain): string {
+  return (
+    token.rheaAlias ||
+    getRheaChainByAlias((token.blockchain || "").toLowerCase())?.alias ||
+    (token.blockchain || "").toLowerCase()
+  );
+}
+
+function isRheaNativeToken(token: TokenChain, nativeId: string): boolean {
+  const addr = (token.contractAddress || "").toLowerCase();
+  const asset = (token.assetId || "").toLowerCase();
+  const native = nativeId.toLowerCase();
+  if (addr === native || asset === native) return true;
+
+  const isNativeSymbol =
+    !!token.symbol &&
+    !!token.nativeToken?.symbol &&
+    token.symbol.toLowerCase() === token.nativeToken.symbol.toLowerCase();
+  if (!isNativeSymbol) return false;
+
+  // Lending often fills contractAddress with assetId for natives
+  if (!token.contractAddress || token.contractAddress === token.assetId) return true;
+  return false;
+}
+
+/** On-chain token ID for Rhea quote/swap/report. Natives use RHEA_NATIVE_TOKEN_IDS. */
 export function tokenAddressForQuote(token: TokenChain): string {
+  const alias = resolveTokenAlias(token);
+  const nativeId = alias ? RHEA_NATIVE_TOKEN_IDS[alias] : undefined;
+  if (nativeId && isRheaNativeToken(token, nativeId)) {
+    return nativeId;
+  }
   return token.contractAddress || token.assetId || "";
 }
 
