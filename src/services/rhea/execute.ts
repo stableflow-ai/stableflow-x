@@ -18,8 +18,9 @@ export type RheaSigner = (signingRequest: unknown) => Promise<Record<string, unk
 
 /** API returns `{ spender, tx }` or a bare RheaSwapTx */
 const unwrapApproveTx = (item: RheaApproveItem): RheaSwapTx => {
-  if (item && typeof item === "object" && "tx" in item && item.tx) {
-    return item.tx;
+  if (item && typeof item === "object" && "tx" in item) {
+    const tx = (item as { tx?: RheaSwapTx }).tx;
+    if (tx && typeof tx === "object") return tx;
   }
   return item as RheaSwapTx;
 };

@@ -188,20 +188,34 @@ export default function Wallet() {
               return (
                 <div
                   key={type}
-                  className="shrink-0 h-[56px] rounded-[12px] border border-[#EDF0F7] px-[15px] flex items-center justify-between"
+                  className="shrink-0 rounded-[12px] border border-[#EDF0F7] px-[15px] py-[12px] flex flex-col gap-[8px]"
                   style={{ backgroundImage: typeMeta?.bg }}
                 >
-                  <div className="flex items-center gap-[10px]">
-                    <ChainTypeIcon type={type} />
-                    <span className="text-[16px] font-medium text-black">{WALLET_LABEL[type]}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-[10px]">
+                      <ChainTypeIcon type={type} />
+                      <span className="text-[16px] font-medium text-black">{WALLET_LABEL[type]}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="button h-[32px] w-[90px] rounded-[16px] bg-white shadow-[0px_2px_6px_0px_rgba(0,0,0,0.1)] text-[14px] text-[#444C59]"
+                      onClick={() => wallet?.connect?.()}
+                    >
+                      Connect
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="button h-[32px] w-[90px] rounded-[16px] bg-white shadow-[0px_2px_6px_0px_rgba(0,0,0,0.1)] text-[14px] text-[#444C59]"
-                    onClick={() => wallet?.connect?.()}
-                  >
-                    Connect
-                  </button>
+                  {type === "evm" && (
+                    <div className="flex items-center gap-[4px] overflow-x-auto">
+                      {EVM_TRADE_CHAINS.map((c) => (
+                        <img
+                          key={c.blockchain}
+                          src={c.chainIcon}
+                          alt=""
+                          className="size-[16px] rounded-[6px] object-cover shrink-0"
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             }
