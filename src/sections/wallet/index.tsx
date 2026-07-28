@@ -2,7 +2,7 @@ import Drawer from "@/components/drawer";
 import useWalletStore from "@/stores/use-wallet";
 import useWalletsStore, { type WalletType } from "@/stores/use-wallets";
 import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
-import { chainTypes, type TokenChain, RHEA_WALLET_TYPES } from "@/config/chains";
+import chains, { chainTypes, type TokenChain, RHEA_WALLET_TYPES } from "@/config/chains";
 import { formatNumber } from "@/utils/format/number";
 import { getCachedRheaTokens } from "@/services/rhea/tokens";
 import { getStableflowIcon } from "@/utils/format/logo";
@@ -13,6 +13,10 @@ import Amount from "@/components/amount";
 import ChainTypeIcon from "@/components/chain-type-icon";
 import Skeleton from "@/components/skeleton";
 import Address from "./address";
+
+const EVM_TRADE_CHAINS = Object.values(chains).filter(
+  (c) => c.chainType === "evm" && c.tradeEnabled
+);
 
 function HoldingsSkeleton() {
   return (
@@ -224,24 +228,38 @@ export default function Wallet() {
                   />
                 </div>
 
-                <div className="w-full px-[15px] pb-[12px] flex items-center justify-between gap-2">
-                  <Address type={type as WalletType} />
-                  <button
-                    type="button"
-                    className="button shrink-0 p-1"
-                    onClick={() =>
-                      setExpanded((prev) => ({ ...prev, [type]: !prev[type] }))
-                    }
-                  >
-                    <img
-                      src={getStableflowIcon("icon-arrow-down.svg")}
-                      alt=""
-                      className={clsx(
-                        "w-[10px] h-[4px] transition-transform duration-150",
-                        isExpanded && "rotate-180"
-                      )}
-                    />
-                  </button>
+                <div className="w-full px-[15px] pb-[12px] flex flex-col gap-[8px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <Address type={type as WalletType} />
+                    <button
+                      type="button"
+                      className="button shrink-0 p-1"
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [type]: !prev[type] }))
+                      }
+                    >
+                      <img
+                        src={getStableflowIcon("icon-arrow-down.svg")}
+                        alt=""
+                        className={clsx(
+                          "w-[10px] h-[4px] transition-transform duration-150",
+                          isExpanded && "rotate-180"
+                        )}
+                      />
+                    </button>
+                  </div>
+                  {type === "evm" && !isExpanded && (
+                    <div className="flex items-center gap-[4px] overflow-x-auto">
+                      {EVM_TRADE_CHAINS.map((c) => (
+                        <img
+                          key={c.blockchain}
+                          src={c.chainIcon}
+                          alt=""
+                          className="size-[16px] rounded-[6px] object-cover shrink-0"
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {isExpanded && (

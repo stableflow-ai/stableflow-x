@@ -74,6 +74,8 @@ const DrawerContent = (props: any) => {
     isMobile,
     title,
     onClose,
+    showBack,
+    onBack,
   } = props;
 
   return (
@@ -93,6 +95,8 @@ const DrawerContent = (props: any) => {
       <DrawerTitle
         onClose={onClose}
         className={titleClassName}
+        showBack={showBack}
+        onBack={onBack}
       >
         {title}
       </DrawerTitle>

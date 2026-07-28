@@ -15,6 +15,7 @@ type ChainPaneProps = {
   chainFilter: string;
   onSelectFilter: (filter: string) => void;
   tokens: TokenChain[];
+  hideTitle?: boolean;
 };
 
 function formatUsd(value: number) {
@@ -25,6 +26,7 @@ export default function ChainPane({
   chainFilter,
   onSelectFilter,
   tokens,
+  hideTitle = false,
 }: ChainPaneProps) {
   const wallets = useWalletsStore();
   const balancesStore = useBalancesStore();
@@ -48,6 +50,16 @@ export default function ChainPane({
     return map;
   }, [evmChains, tokens, balancesStore.evmBalances]);
 
+  const sortedEvmChains = useMemo(
+    () =>
+      [...evmChains].sort(
+        (a, b) =>
+          (evmChainUsd.get(b.blockchain) || 0) -
+          (evmChainUsd.get(a.blockchain) || 0)
+      ),
+    [evmChains, evmChainUsd]
+  );
+
   const evmTotalUsd = useMemo(() => {
     let sum = 0;
     for (const v of evmChainUsd.values()) sum += v;
@@ -55,13 +67,12 @@ export default function ChainPane({
   }, [evmChainUsd, balancesStore.evmBalances]);
 
   const topEvmIcons = useMemo(() => {
-    const sorted = [...evmChains].sort(
-      (a, b) => (evmChainUsd.get(b.blockchain) || 0) - (evmChainUsd.get(a.blockchain) || 0)
+    const withBalance = sortedEvmChains.filter(
+      (c) => (evmChainUsd.get(c.blockchain) || 0) > 0
     );
-    const withBalance = sorted.filter((c) => (evmChainUsd.get(c.blockchain) || 0) > 0);
-    const source = withBalance.length > 0 ? withBalance : sorted;
+    const source = withBalance.length > 0 ? withBalance : sortedEvmChains;
     return source.slice(0, 4);
-  }, [evmChains, evmChainUsd]);
+  }, [sortedEvmChains, evmChainUsd]);
 
   const nonEvmChains = useMemo(() => {
     return NON_EVM_ORDER.map((type) => {
@@ -76,21 +87,18 @@ export default function ChainPane({
 
   return (
     <div className="flex flex-col gap-[10px]">
-      <div className="text-[16px] text-black">Select Chain</div>
+      {!hideTitle && <div className="text-[16px] text-black">Select Chain</div>}
 
       <div className="rounded-[10px] bg-[#F5F7FD] p-[12px]">
         <div className="flex items-start justify-between gap-2 mb-[8px]">
           <div className="flex items-center gap-[6px] min-w-0">
             <div className="grid grid-cols-2 items-center shrink-0">
-              {topEvmIcons.map((c, i) => (
+              {topEvmIcons.map((c) => (
                 <img
                   key={c.blockchain}
                   src={c.chainIcon}
                   alt=""
-                  className={clsx(
-                    "w-[12px] h-[12px] rounded-[4px] border border-white object-cover",
-                    i > 0 && ""
-                  )}
+                  className="w-[12px] h-[12px] rounded-[4px] border border-white object-cover"
                 />
               ))}
             </div>
@@ -124,7 +132,7 @@ export default function ChainPane({
           >
             <span className="text-[13px] font-medium text-[#444C59]">All</span>
           </button>
-          {evmChains.map((c) => {
+          {sortedEvmChains.map((c) => {
             const usd = evmChainUsd.get(c.blockchain) || 0;
             const selected =
               chainFilter === c.blockchain || chainFilter === c.rheaHttpChainId;

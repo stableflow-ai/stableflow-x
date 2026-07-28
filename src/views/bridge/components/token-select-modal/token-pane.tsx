@@ -74,18 +74,35 @@ export default function TokenPane({
         </div>
       )}
 
-      <div className="h-[40px] rounded-[8px] border border-[#F2F2F2] px-3 flex items-center gap-2 mb-3 shrink-0">
+      <div className="relative h-[40px] rounded-[8px] border border-[#F2F2F2] px-3 flex items-center gap-2 mb-3 shrink-0">
         <img
           src={getStableflowIcon("icon-search.svg")}
           alt=""
-          className="w-3.5 h-3.5 opacity-50"
+          className="w-3.5 h-3.5 opacity-50 shrink-0"
         />
         <input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search source token and chain"
-          className="flex-1 outline-none text-[14px] text-[#444C59] placeholder:text-[#9FA7BA] placeholder:opacity-50 bg-transparent"
+          className={clsx(
+            "flex-1 outline-none text-[14px] text-[#444C59] placeholder:text-[#9FA7BA] placeholder:opacity-50 bg-transparent min-w-0",
+            search && "pr-8"
+          )}
         />
+        {!!search && (
+          <button
+            type="button"
+            className="button absolute right-2 top-1/2 -translate-y-1/2 size-[20px] rounded-full bg-[#EDF0F7] flex items-center justify-center"
+            onClick={() => onSearchChange("")}
+            aria-label="Clear search"
+          >
+            <img
+              src={getStableflowIcon("icon-x.svg")}
+              alt=""
+              className="w-2.5 h-2.5"
+            />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-[14px] min-h-0">
