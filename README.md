@@ -36,7 +36,7 @@ pnpm lint
 
 ## Environment Variables
 
-Create `.env.local` in the project root (do not commit secrets):
+Copy `.env.example` to `.env.local` in the project root and fill in values (do not commit secrets):
 
 | Variable | Required | Description |
 | --- | --- | --- |
