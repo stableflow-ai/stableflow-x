@@ -1,13 +1,81 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import useWalletStore from "@/stores/use-wallet";
 import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
 import { fetchRheaTokens, getCachedRheaTokens } from "@/services/rhea/tokens";
-import type { TokenChain } from "@/config/chains";
+import chains, { type ChainType, type TokenChain } from "@/config/chains";
 import useIsMobile from "@/hooks/use-is-mobile";
 import Drawer from "@/components/drawer";
 import ChainPane from "./chain-pane";
 import TokenPane from "./token-pane";
-import { getTokenBalance, isSameToken, sortTokensByUsd } from "./utils";
+import { getTokenBalance, isSameToken, sortTokensByUsd, sumChainUsd } from "./utils";
+
+function getEvmTradeChains(): ChainType[] {
+  return Object.values(chains).filter(
+    (c) => c.chainType === "evm" && c.tradeEnabled
+  ) as ChainType[];
+}
+
+function MobileTokenTitle({
+  chainFilter,
+  tokens,
+  evmBalances,
+}: {
+  chainFilter: string;
+  tokens: TokenChain[];
+  evmBalances: Record<string, any> | undefined;
+}) {
+  const evmChains = useMemo(() => getEvmTradeChains(), []);
+
+  const topEvmIcons = useMemo(() => {
+    const sorted = [...evmChains].sort(
+      (a, b) =>
+        sumChainUsd(b, tokens, evmBalances) - sumChainUsd(a, tokens, evmBalances)
+    );
+    const withBalance = sorted.filter(
+      (c) => sumChainUsd(c, tokens, evmBalances) > 0
+    );
+    const source = withBalance.length > 0 ? withBalance : sorted;
+    return source.slice(0, 4);
+  }, [evmChains, tokens, evmBalances]);
+
+  if (chainFilter === "evm") {
+    return (
+      <span className="inline-flex items-center gap-[6px] min-w-0">
+        <span className="shrink-0">Select Token from</span>
+        <span className="grid grid-cols-2 shrink-0">
+          {topEvmIcons.map((c) => (
+            <img
+              key={c.blockchain}
+              src={c.chainIcon}
+              alt=""
+              className="size-[11px] rounded-[3px] border border-white object-cover"
+            />
+          ))}
+        </span>
+        <span className="shrink-0">EVM</span>
+      </span>
+    );
+  }
+
+  const chain =
+    Object.values(chains).find(
+      (c) => c.blockchain === chainFilter || c.rheaHttpChainId === chainFilter
+    ) || null;
+
+  return (
+    <span className="inline-flex items-center gap-[6px] min-w-0">
+      <span className="shrink-0">Select Token from</span>
+      {chain?.chainIcon && (
+        <img
+          src={chain.chainIcon}
+          alt=""
+          className="size-[16px] rounded-[4px] object-cover shrink-0"
+        />
+      )}
+      <span className="truncate">{chain?.chainName || chainFilter}</span>
+    </span>
+  );
+}
 
 export default function TokenSelectModal() {
   const walletStore = useWalletStore();
@@ -17,11 +85,13 @@ export default function TokenSelectModal() {
   const [chainFilter, setChainFilter] = useState<string>("evm");
   const [tokens, setTokens] = useState<TokenChain[]>(getCachedRheaTokens());
   const [loading, setLoading] = useState(false);
+  const [mobileStep, setMobileStep] = useState<"chain" | "token">("chain");
 
   useEffect(() => {
     if (!walletStore.showTokenSelect) return;
     setSearch("");
     setChainFilter("evm");
+    setMobileStep("chain");
     const cached = getCachedRheaTokens();
     if (cached.length) {
       setTokens(cached);
@@ -84,11 +154,17 @@ export default function TokenSelectModal() {
     });
   };
 
+  const onSelectFilter = (filter: string) => {
+    setChainFilter(filter);
+    if (isMobile) setMobileStep("token");
+  };
+
   const chainPane = (
     <ChainPane
       chainFilter={chainFilter}
-      onSelectFilter={setChainFilter}
+      onSelectFilter={onSelectFilter}
       tokens={tokens}
+      hideTitle={isMobile}
     />
   );
 
@@ -106,20 +182,36 @@ export default function TokenSelectModal() {
     />
   );
 
+  const mobileTitle: ReactNode =
+    mobileStep === "chain" ? (
+      "Select Chain"
+    ) : (
+      <MobileTokenTitle
+        chainFilter={chainFilter}
+        tokens={tokens}
+        evmBalances={balancesStore.evmBalances}
+      />
+    );
+
   if (isMobile) {
     return (
       <Drawer
-        title="Select Token"
+        title={mobileTitle}
         open={walletStore.showTokenSelect}
         onClose={onClose}
+        showBack={mobileStep === "token"}
+        onBack={() => setMobileStep("chain")}
         className="bg-[#EDF0F7] flex flex-col"
         titleClassName="shrink-0"
       >
-        <div className="flex-1 h-0 overflow-y-auto px-[16px] pb-[20px] flex flex-col gap-[16px]">
-          {chainPane}
-          <div className="bg-white rounded-[12px] p-[16px] min-h-[320px] flex flex-col">
-            {tokenPane}
-          </div>
+        <div className="flex-1 h-0 overflow-y-auto px-[12px] md:px-[16px] pb-[20px] flex flex-col">
+          {mobileStep === "chain" ? (
+            chainPane
+          ) : (
+            <div className="bg-white rounded-[12px] p-0 md:p-[16px] min-h-[320px] flex flex-col flex-1">
+              {tokenPane}
+            </div>
+          )}
         </div>
       </Drawer>
     );
