@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "swiper/css";
+@import "swiper/css/navigation";
+@import "swiper/css/pagination";
+@import "react-toastify/dist/ReactToastify.css";
+
+#root {
+  width: 100%;
+}
+
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("/fonts/SpaceGrotesk-Regular.ttf");
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("/fonts/SpaceGrotesk-Medium.ttf");
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("/fonts/SpaceGrotesk-Bold.ttf");
+  font-weight: 700;
+}
+
+body {
+  background-color: #fff;
+  color: #444c59;
+  font-family: "SpaceGrotesk";
+}
+
+/* Reset */
+input {
+  outline: none;
+}
+
+/* Remove number input spinners (controllers) in all browsers */
+
+/* Chrome, Safari, Edge, Opera */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Scrollbar */
+body::-webkit-scrollbar,
+div::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  /**/
+}
+
+body::-webkit-scrollbar-track,
+div::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 6px;
+}
+
+body::-webkit-scrollbar-thumb,
+div::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+body::-webkit-scrollbar-thumb:hover,
+div::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Button */
+@layer components {
+  .button:not([disabled]) {
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  .button:disabled {
+    cursor: not-allowed;
+  }
+
+  .button:hover:not([disabled]) {
+    opacity: 0.9;
+  }
+}
+
+.drawer-open {
+  overflow: hidden;
+}
+
+:root {
+  --toastify-toast-right: 0px !important;
+  --toastify-toast-top: 65px !important;
+}
+
+.Toastify__toast-container--top-right .stableflow-toast-top-right.Toastify__toast {
+  padding: 0px 0px 0px 22px;
+  margin-bottom: 10px;
+  min-height: unset;
+}
+.Toastify__toast-container--top-right .stableflow-toast-top-right.Toastify__toast > .Toastify__progress-bar--wrp {
+  pointer-events: none;
+}
+
+@media screen and (max-width: 768px) {
+  .Toastify__toast-container--top-right .stableflow-toast-top-right.Toastify__toast {
+    padding: 0px var(--toastify-toast-padding) 0px var(--toastify-toast-padding);
+    top: 65px;
+  }
+}
+
+/* Bridge Trusted by — Swiper pagination (matches page palette) */
+.trusted-swiper-pagination-host .swiper-pagination-bullet {
+  background: #9fa7ba;
+  opacity: 1;
+}
+.trusted-swiper-pagination-host .swiper-pagination-bullet-active {
+  background: #6284f5;
+}
+
+#launcher {
+  display: none !important;
+}

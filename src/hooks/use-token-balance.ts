@@ -1,0 +1,77 @@
+import { useEffect, useState } from "react";
+import useWalletsStore, { type WalletType } from "@/stores/use-wallets";
+import Big from "big.js";
+import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
+
+export default function useTokenBalance(token: any, isAuto: boolean = true) {
+  const [balance, setBalance] = useState("0");
+  const [loading, setLoading] = useState(false);
+  const wallets = useWalletsStore();
+  const balancesStore = useBalancesStore();
+  const wallet = wallets[token?.chainType as WalletType];
+
+  const getBalance = async (): Promise<{ amount: string; wei: bigint; error?: string | null; }> => {
+    const balanceResult = {
+      amount: "0",
+      wei: 0n,
+      error: null,
+    };
+
+    if (!token?.chainType) return balanceResult;
+
+    if (!wallet?.wallet || !wallet.account) return balanceResult;
+
+    try {
+      setLoading(true);
+
+      const balance = await wallet.wallet?.balanceOf(
+        token,
+        wallet.account,
+        { isCatchError: true }
+      );
+
+      const _balance = balance
+        ? Big(balance)
+          .div(10 ** token.decimals)
+          .toFixed(token.decimals, Big.roundDown)
+        : "0";
+      setBalance(_balance);
+
+      balanceResult.wei = balance;
+      balanceResult.amount = _balance;
+
+      const key = `${token.chainType}Balances`;
+      let nextBalances = balancesStore[key as keyof BalancesState];
+
+      if (!nextBalances) {
+        nextBalances = {};
+      }
+
+      if (nextBalances[token.chainId || token.blockchain]) {
+        nextBalances[token.chainId || token.blockchain][token.contractAddress] = _balance;
+      } else {
+        nextBalances[token.chainId || token.blockchain] = {
+          [token.contractAddress]: _balance,
+        };
+      }
+
+      balancesStore.set({
+        [key]: nextBalances
+      });
+    } catch (error: any) {
+      console.error(error);
+      setBalance("0");
+      balanceResult.error = error.message;
+    } finally {
+      setLoading(false);
+    }
+
+    return balanceResult;
+  };
+
+  useEffect(() => {
+    if (token?.contractAddress && isAuto && wallet?.account) getBalance();
+  }, [token, isAuto, wallet?.account]);
+
+  return { balance, loading, getBalance };
+}
