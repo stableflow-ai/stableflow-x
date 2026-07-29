@@ -48,6 +48,8 @@ const WALLET_LABEL: Record<string, string> = {
   aptos: "Aptos",
   ton: "Ton",
   sui: "Sui",
+  btc: "Bitcoin",
+  zcash: "Zcash",
 };
 
 type HoldingRow = {
@@ -129,6 +131,8 @@ export default function Wallet() {
     balancesStore.aptosBalances,
     balancesStore.suiBalances,
     balancesStore.tonBalances,
+    balancesStore.btcBalances,
+    balancesStore.zcashBalances,
   ]);
 
   const totalByType = useMemo(() => {

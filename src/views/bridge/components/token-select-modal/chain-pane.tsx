@@ -9,7 +9,7 @@ import Big from "big.js";
 import { useMemo } from "react";
 import { sumChainUsd, sumTypeUsd } from "./utils";
 
-const NON_EVM_ORDER: RheaWalletType[] = ["sol", "near", "tron", "aptos", "sui", "ton"];
+const NON_EVM_ORDER: RheaWalletType[] = ["sol", "near", "tron", "aptos", "sui", "ton", "btc", "zcash"];
 
 type ChainPaneProps = {
   chainFilter: string;

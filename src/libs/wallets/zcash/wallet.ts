@@ -1,0 +1,121 @@
+import Big from "big.js";
+import { csl } from "@/utils/log";
+import {
+  get_balance_zcash,
+  sign_message_zcash,
+  transfer_zcash,
+} from "./sdk";
+
+const ZEC_DECIMALS = 8;
+
+export default class ZcashWallet {
+  private account: string | null;
+
+  constructor(options: { account: string | null }) {
+    this.account = options.account;
+  }
+
+  async balanceOf(
+    _token: any,
+    _account: string,
+    options?: { isCatchError?: boolean }
+  ): Promise<string> {
+    try {
+      const balance = await get_balance_zcash();
+      const available = balance.available || "0";
+      // SDK returns ZEC decimal string; store layer expects zatoshi raw units
+      return Big(available).times(10 ** ZEC_DECIMALS).toFixed(0);
+    } catch (error) {
+      csl("Zcash balanceOf", "red-500", "Get ZEC balance failed: %o", error);
+      if (options?.isCatchError) throw error;
+      return "0";
+    }
+  }
+
+  async sendRheaTx(tx: any): Promise<string> {
+    if (!this.account) {
+      throw new Error("Zcash wallet not connected");
+    }
+
+    const kind = String(tx?.kind || "").toLowerCase();
+    if (kind !== "utxo_transfer" && kind !== "zcash_transfer") {
+      throw new Error(`Unsupported Zcash Rhea tx kind: ${tx?.kind}`);
+    }
+
+    const to = tx.depositAddress || tx.to;
+    if (!to) {
+      throw new Error("Invalid Rhea Zcash tx: missing depositAddress");
+    }
+
+    const decimals = Number(tx.decimals ?? ZEC_DECIMALS);
+    const amountZec = Big(tx.amount || 0)
+      .div(10 ** decimals)
+      .toFixed();
+
+    try {
+      return await transfer_zcash({ to, amount: amountZec });
+    } catch (error: any) {
+      const msg = String(error?.message || error || "");
+      if (/shield|funding|insufficient|balance/i.test(msg)) {
+        throw new Error(
+          "Zcash transfer failed. If your ZEC is in a transparent address, shield funds in Noir Wallet first, then retry."
+        );
+      }
+      throw error;
+    }
+  }
+
+  async transfer(data: {
+    token?: any;
+    amount?: string;
+    recipient?: string;
+    originAsset?: string;
+    depositAddress?: string;
+    memo?: string;
+  }): Promise<string> {
+    if (!this.account) {
+      throw new Error("Zcash wallet not connected");
+    }
+
+    const to = data.recipient || data.depositAddress;
+    if (!to) {
+      throw new Error("Missing recipient address");
+    }
+
+    const amountRaw = data.amount;
+    if (amountRaw == null || amountRaw === "") {
+      throw new Error("Missing transfer amount");
+    }
+
+    const decimals = Number(data.token?.decimals ?? ZEC_DECIMALS);
+    const amountZec = Big(amountRaw).div(10 ** decimals).toFixed();
+
+    try {
+      return await transfer_zcash({ to, amount: amountZec });
+    } catch (error: any) {
+      const msg = String(error?.message || error || "");
+      if (/shield|funding|insufficient|balance/i.test(msg)) {
+        throw new Error(
+          "Zcash transfer failed. If your ZEC is in a transparent address, shield funds in Noir Wallet first, then retry."
+        );
+      }
+      throw error;
+    }
+  }
+
+  async signRheaRequest(req: any): Promise<Record<string, unknown>> {
+    const message =
+      typeof req === "string"
+        ? req
+        : req?.message || req?.payload || JSON.stringify(req);
+    const result = await sign_message_zcash(String(message));
+    return {
+      ...(typeof req === "object" && req ? req : {}),
+      signature: result.signature,
+      pubkey: result.pubkey,
+      address: result.address,
+      signingMode: result.signingMode,
+      message,
+    };
+  }
+}

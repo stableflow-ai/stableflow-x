@@ -41,6 +41,11 @@ export function validateAddress(
       return validateTronAddress(trimmedAddress);
     case "ton":
       return validateTonAddress(trimmedAddress);
+    case "btc":
+      return validateBtcAddress(trimmedAddress);
+    case "zcash":
+    case "zec":
+      return validateZcashAddress(trimmedAddress);
     default:
       return {
         isValid: false,
@@ -214,6 +219,43 @@ function validateTronAddress(address: string): AddressValidationResult {
 }
 
 /**
+ * Validates a Bitcoin address
+ * Supports P2PKH (1...), P2SH (3...), bech32 (bc1q...), taproot (bc1p...)
+ */
+function validateBtcAddress(address: string): AddressValidationResult {
+  const p2pkhOrP2sh = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+  const bech32 = /^bc1[qp][a-z0-9]{38,58}$/i;
+
+  if (!p2pkhOrP2sh.test(address) && !bech32.test(address)) {
+    return {
+      isValid: false,
+      error: "Invalid Bitcoin address",
+    };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Validates a Zcash address
+ * Supports transparent (t1/t3), unified (u1), and sapling (zs1)
+ */
+function validateZcashAddress(address: string): AddressValidationResult {
+  const transparent = /^t[13][a-zA-Z0-9]{33,}$/;
+  const unified = /^u1[a-z0-9]{50,}$/i;
+  const sapling = /^zs1[a-z0-9]{50,}$/i;
+
+  if (!transparent.test(address) && !unified.test(address) && !sapling.test(address)) {
+    return {
+      isValid: false,
+      error: "Invalid Zcash address",
+    };
+  }
+
+  return { isValid: true };
+}
+
+/**
  * Gets a placeholder text for the address input based on the target blockchain
  */
 export function getAddressPlaceholder(blockchain: string): string {
@@ -228,6 +270,11 @@ export function getAddressPlaceholder(blockchain: string): string {
       return "Enter Aptos wallet address (e.g., 0x93493b07d031c4f18ad1e874575761be7e47d4cea5c81d538600e8ec72d6ab1c)";
     case "tron":
       return "Enter Tron wallet address (e.g., TG4cfJGzvmpWxYyQKSosCWTacKCxEwSiKw)";
+    case "btc":
+      return "Enter Bitcoin wallet address (e.g., bc1q... or 1... / 3...)";
+    case "zcash":
+    case "zec":
+      return "Enter Zcash wallet address (e.g., t1... / u1... / zs1...)";
     default:
       return "Enter recipient wallet address";
   }
