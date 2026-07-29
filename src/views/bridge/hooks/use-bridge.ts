@@ -27,6 +27,7 @@ import { TradeProject } from "@/config/trade";
 import { tokenAddressForQuote, tokenHttpChainId, fetchRheaTokens } from "@/services/rhea/tokens";
 import { executeRheaTx } from "@/libs/wallets/execute-rhea-tx";
 import { rheaReport, pollRheaOrderStatus } from "@/services/rhea/status";
+import { ZCASH_MANUAL_WALLET_NAME } from "@/libs/wallets/zcash/wallet";
 
 const TRANSFER_MIN_AMOUNT = import.meta.env.VITE_TRANSFER_MIN_AMOUNT || 0.0001;
 
@@ -371,6 +372,39 @@ export default function useBridge(_props?: any) {
         },
         selectedQuote
       );
+
+      // Mobile Zcash manual: show QR deposit even when swap.tx is present
+      const isZcashManual =
+        fromToken.chainType === "zcash" &&
+        walletEntry?.walletName === ZCASH_MANUAL_WALLET_NAME;
+
+      if (isZcashManual && swap.deposit?.depositAddress) {
+        bridgeStore.set({
+          depositInfo: {
+            ...swap.deposit,
+            manual: true,
+            amount: amountWei,
+            decimals: fromToken.decimals,
+            symbol: fromToken.symbol,
+            sender,
+            recipient,
+            router: swap.router || selectedQuote.router,
+            orderId: swap.deposit.orderId || swap.orderId,
+            estimatedOut: swap.estimatedOut || selectedQuote.estimatedOut,
+            minAmountOut: swap.minAmountOut || selectedQuote.minAmountOut,
+            fromTokenAddress: tokenAddressForQuote(fromToken),
+            toTokenAddress: tokenAddressForQuote(toToken),
+            fromChain: tokenHttpChainId(fromToken),
+            toChain: tokenHttpChainId(toToken),
+            amountDisplay: bridgeStore.amount,
+            outputAmount,
+            reportBase,
+            selectedQuote,
+          },
+          transferring: false,
+        });
+        return;
+      }
 
       // Deposit-address flow: transfer token to deposit address
       if (swap.deposit?.depositAddress && !swap.tx) {

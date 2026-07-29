@@ -2,9 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDebounceFn } from "ahooks";
 import useWalletsStore from "@/stores/use-wallets";
 import useBalancesStore from "@/stores/use-balances";
+import useIsMobile from "@/hooks/use-is-mobile";
 import { useWalletSelector } from "../hooks/use-wallet-selector";
 import WalletSelector from "../components/wallet-selector";
-import ZcashWallet from "./wallet";
+import ZcashWallet, {
+  ZCASH_MANUAL_WALLET_NAME,
+  type ZcashWalletMode,
+} from "./wallet";
+import PasteAddressModal from "./paste-address-modal";
 import {
   connect_zcash,
   disconnect_zcash,
@@ -16,7 +21,9 @@ import {
 const NOIR_DOWNLOAD_URL =
   "https://chromewebstore.google.com/detail/noir-wallet/mfoghjbpfanobmnoemoepenjjcmfpmdn";
 
-const NOIR_ICON =
+const MANUAL_ADDRESS_KEY = "_zcash_manual_address";
+
+export const NOIR_ICON =
   "data:image/svg+xml," +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
@@ -41,10 +48,13 @@ export default function ZcashProvider({
 const Content = () => {
   const [mounted, setMounted] = useState(false);
   const [account, setAccount] = useState<string | null>(null);
+  const [mode, setMode] = useState<ZcashWalletMode>("noir");
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const isMobile = useIsMobile();
   const setWallets = useWalletsStore((state) => state.set);
   const setBalancesStore = useBalancesStore((state) => state.set);
 
-  const installed = mounted ? isNoirWalletInstalled() : false;
+  const installed = mounted && !isMobile ? isNoirWalletInstalled() : false;
 
   const wallets = useMemo(
     () => [
@@ -58,8 +68,26 @@ const Content = () => {
     [installed]
   );
 
+  const clearManualStorage = () => {
+    try {
+      sessionStorage.removeItem(MANUAL_ADDRESS_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
+  const persistManualAddress = (addr: string) => {
+    try {
+      sessionStorage.setItem(MANUAL_ADDRESS_KEY, addr);
+    } catch {
+      // ignore
+    }
+  };
+
   const clearStore = (connectFn: () => void) => {
     setAccount(null);
+    setMode("noir");
+    clearManualStorage();
     setBalancesStore({ zcashBalances: {} });
     setWallets({
       zcash: {
@@ -87,26 +115,50 @@ const Content = () => {
       }
       const result = await connect_zcash();
       const nextAccount = result.transparent || null;
+      clearManualStorage();
+      setMode("noir");
       setAccount(nextAccount);
     },
   });
+
+  const openConnect = () => {
+    if (isMobile) {
+      setPasteOpen(true);
+      return;
+    }
+    onOpen();
+  };
+
+  const onPasteConfirm = (address: string) => {
+    setMode("manual");
+    setAccount(address);
+    persistManualAddress(address);
+    setPasteOpen(false);
+  };
 
   const { run: syncWallet } = useDebounceFn(
     () => {
       if (!mounted) return;
 
-      const zcashWallet = new ZcashWallet({ account });
-      const connect = () => onOpen();
+      const zcashWallet = new ZcashWallet({ account, mode });
+      const connect = () => openConnect();
+      const isManual = mode === "manual";
 
       setWallets({
         zcash: {
           account,
           wallet: zcashWallet,
-          walletIcon: NOIR_ICON,
-          walletName: account ? "Noir Wallet" : null,
+          walletIcon: account ? NOIR_ICON : null,
+          walletName: account
+            ? isManual
+              ? ZCASH_MANUAL_WALLET_NAME
+              : "Noir Wallet"
+            : null,
           connect,
           disconnect: async () => {
-            await disconnect_zcash();
+            if (!isManual) {
+              await disconnect_zcash();
+            }
             clearStore(connect);
           },
         },
@@ -117,19 +169,35 @@ const Content = () => {
 
   useEffect(() => {
     syncWallet();
-  }, [account, mounted]);
+  }, [account, mode, mounted, isMobile]);
 
   useEffect(() => {
     if (!mounted) return;
 
     let cancelled = false;
 
+    // Mobile: restore pasted address
+    if (isMobile) {
+      try {
+        const saved = sessionStorage.getItem(MANUAL_ADDRESS_KEY);
+        if (saved) {
+          setMode("manual");
+          setAccount(saved);
+        }
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    // Desktop: silent Noir reconnect
     const silentReconnect = async () => {
       if (!isNoirWalletInstalled()) return;
       try {
         const accounts = await get_accounts_zcash();
         if (cancelled) return;
         if (accounts?.transparent) {
+          setMode("noir");
           setAccount(accounts.transparent);
         }
       } catch {
@@ -146,9 +214,10 @@ const Content = () => {
         const next =
           (Array.isArray(data) ? data[0] : data?.transparent) || null;
         if (!next) {
-          clearStore(() => onOpen());
+          clearStore(() => openConnect());
           return;
         }
+        setMode("noir");
         setAccount(typeof next === "string" ? next : next.transparent || null);
       };
       zcash.on("accountsChanged", onAccountsChanged);
@@ -166,21 +235,28 @@ const Content = () => {
         }
       }
     };
-  }, [mounted]);
+  }, [mounted, isMobile]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   return (
-    <WalletSelector
-      open={open}
-      onClose={onClose}
-      onConnect={onConnect}
-      isConnecting={isConnecting}
-      wallets={wallets}
-      readyState={{ key: "readyState", value: "Installed" }}
-      title="Select Zcash Wallet"
-    />
+    <>
+      <WalletSelector
+        open={!isMobile && open}
+        onClose={onClose}
+        onConnect={onConnect}
+        isConnecting={isConnecting}
+        wallets={wallets}
+        readyState={{ key: "readyState", value: "Installed" }}
+        title="Select Zcash Wallet"
+      />
+      <PasteAddressModal
+        open={isMobile && pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        onConfirm={onPasteConfirm}
+      />
+    </>
   );
 };

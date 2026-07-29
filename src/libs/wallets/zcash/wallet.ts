@@ -8,11 +8,24 @@ import {
 
 const ZEC_DECIMALS = 8;
 
+export type ZcashWalletMode = "noir" | "manual";
+
+export const ZCASH_MANUAL_WALLET_NAME = "Manual";
+
 export default class ZcashWallet {
   private account: string | null;
+  private mode: ZcashWalletMode;
 
-  constructor(options: { account: string | null }) {
+  constructor(options: {
+    account: string | null;
+    mode?: ZcashWalletMode;
+  }) {
     this.account = options.account;
+    this.mode = options.mode || "noir";
+  }
+
+  get isManual() {
+    return this.mode === "manual";
   }
 
   async balanceOf(
@@ -20,6 +33,10 @@ export default class ZcashWallet {
     _account: string,
     options?: { isCatchError?: boolean }
   ): Promise<string> {
+    if (this.mode === "manual") {
+      return "0";
+    }
+
     try {
       const balance = await get_balance_zcash();
       const available = balance.available || "0";
@@ -33,6 +50,12 @@ export default class ZcashWallet {
   }
 
   async sendRheaTx(tx: any): Promise<string> {
+    if (this.mode === "manual") {
+      throw new Error(
+        "Manual Zcash mode uses QR deposit. Please complete the deposit modal."
+      );
+    }
+
     if (!this.account) {
       throw new Error("Zcash wallet not connected");
     }
@@ -73,6 +96,12 @@ export default class ZcashWallet {
     depositAddress?: string;
     memo?: string;
   }): Promise<string> {
+    if (this.mode === "manual") {
+      throw new Error(
+        "Manual Zcash mode uses QR deposit. Please complete the deposit modal."
+      );
+    }
+
     if (!this.account) {
       throw new Error("Zcash wallet not connected");
     }
@@ -104,6 +133,10 @@ export default class ZcashWallet {
   }
 
   async signRheaRequest(req: any): Promise<Record<string, unknown>> {
+    if (this.mode === "manual") {
+      throw new Error("Manual Zcash mode does not support message signing");
+    }
+
     const message =
       typeof req === "string"
         ? req
