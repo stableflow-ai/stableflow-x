@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import { formatNumber } from "@/utils/format/number";
 import { useMemo } from "react";
 import { useHistoryStore } from "@/stores/use-history";
-import { TradeProject, TradeProjectMap } from "@/config/trade";
+import { getRouterDisplayName, getRouterLogo } from "@/services/constants";
 import { getStableflowIcon } from "@/utils/format/logo";
 
 export default function Pending(props: any) {
@@ -41,6 +41,9 @@ export default function Pending(props: any) {
 const PendingItem = ({ className, data }: any) => {
   const historyStore = useHistoryStore();
 
+  const routerLogo = getRouterLogo(data.router);
+  const routerName = getRouterDisplayName(data.router);
+
   const duration = useMemo(() => {
     const currentHistory = historyStore.history[data.deposit_address];
 
@@ -59,11 +62,21 @@ const PendingItem = ({ className, data }: any) => {
     <div className={clsx("w-full md:w-[300px] bg-[#EDF0F7] rounded-[12px]", className)}>
       <div className="rounded-[12px] bg-white border border-[#EDF0F7] p-[12px] pt-[6px]">
         <div className="mb-2 flex justify-between items-center">
-          <img
-            src={TradeProjectMap[data.project as TradeProject]?.logo}
-            alt=""
-            className="w-[62px] h-[16px] object-center object-contain shrink-0"
-          />
+          {routerLogo ? (
+            <img
+              src={routerLogo}
+              alt={routerName}
+              title={routerName}
+              className="w-[62px] h-[16px] object-center object-contain shrink-0"
+            />
+          ) : (
+            <span
+              className="max-w-[120px] truncate text-[12px] font-medium text-[#444C59]"
+              title={routerName}
+            >
+              {routerName || "-"}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-[10px]">
           <img

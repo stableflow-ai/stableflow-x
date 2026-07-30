@@ -21,7 +21,7 @@ import { useAccount, useSwitchChain } from "wagmi";
 import { usePendingHistory } from "@/views/history/hooks/use-pending-history";
 import { csl } from "@/utils/log";
 import { addTradeReport } from "@/stores/use-trade-report";
-import { formatBridgeError, formatBridgeRpcErrorMessage, isReQuoteError, isUserRejectedError, sortQuoteData } from "../utils";
+import { formatBridgeError, formatRheaQuoteErrorMessage, isReQuoteError, isUserRejectedError, sortQuoteData } from "../utils";
 import { useTrack } from "@/hooks/use-track";
 import { tokenAddressForQuote, tokenHttpChainId, fetchRheaTokens } from "@/services/rhea/tokens";
 import { executeRheaTx } from "@/libs/wallets/execute-rhea-tx";
@@ -115,18 +115,25 @@ export default function useBridge(_props?: any) {
     requestId: number,
     options?: { preferLastSelected?: boolean }
   ) => {
+    const quoteKey = Service.Rhea;
     const fromToken = walletStore.fromToken;
     const toToken = walletStore.toToken;
-    if (!fromToken || !toToken) return;
+    if (!fromToken || !toToken) {
+      bridgeStore.clearQuoting(quoteKey);
+      return;
+    }
     if (!bridgeStore.amount || Big(bridgeStore.amount).lte(0)) {
       bridgeStore.clearQuoteData();
+      bridgeStore.clearQuoting(quoteKey);
       return;
     }
 
     const amountWei = toBaseUnits(bridgeStore.amount, fromToken.decimals);
-    if (Big(amountWei).lte(0)) return;
+    if (Big(amountWei).lte(0)) {
+      bridgeStore.clearQuoting(quoteKey);
+      return;
+    }
 
-    const quoteKey = Service.Rhea;
     bridgeStore.setQuoting(quoteKey, requestId, true);
 
     try {
@@ -221,12 +228,13 @@ export default function useBridge(_props?: any) {
       csl("useBridge", "red-500", "quote failed: %o", error);
       bridgeStore.clearQuoteData();
       bridgeStore.set({
-        errorTips: formatBridgeRpcErrorMessage(error?.message || "Quote failed"),
+        errorTips: formatRheaQuoteErrorMessage(
+          error?.message || "Quote failed",
+          fromToken?.decimals ?? 6
+        ),
       });
     } finally {
-      if (requestId === requestIdRef.current) {
-        bridgeStore.setQuoting(quoteKey, requestId, false);
-      }
+      bridgeStore.setQuoting(quoteKey, requestId, false);
     }
   };
 
@@ -442,6 +450,18 @@ export default function useBridge(_props?: any) {
           volume,
         };
         addTradeReport(reportData);
+        historyStore.addHistory({
+          depositAddress: hash,
+          time: Date.now(),
+          timeEstimate: selectedQuote.timeEstimate || 60,
+          amount: bridgeStore.amount,
+          fromToken,
+          toToken,
+          fromAddress: sender,
+          toAddress: recipient,
+          txHash: hash,
+        });
+        historyStore.updateStatus(hash, "PENDING_DEPOSIT");
         getPendingList();
         addTransferTrack({
           type: "transfer_button",
@@ -498,9 +518,10 @@ export default function useBridge(_props?: any) {
 
       const txHash = execResult.txHash || "";
       const execOrderId = execResult.orderId || orderId;
+      const depositAddress = txHash || execOrderId || "";
       const reportData = {
         ...reportBase,
-        deposit_address: txHash || execOrderId || "",
+        deposit_address: depositAddress,
         tx_hash: txHash,
         status: 0,
         order_id: execOrderId,
@@ -508,6 +529,20 @@ export default function useBridge(_props?: any) {
         volume,
       };
       addTradeReport(reportData);
+      if (depositAddress) {
+        historyStore.addHistory({
+          depositAddress,
+          time: Date.now(),
+          timeEstimate: selectedQuote.timeEstimate || 60,
+          amount: bridgeStore.amount,
+          fromToken,
+          toToken,
+          fromAddress: sender,
+          toAddress: recipient,
+          txHash: depositAddress,
+        });
+        historyStore.updateStatus(depositAddress, "PENDING_DEPOSIT");
+      }
       getPendingList();
       addTransferTrack({
         type: "transfer_button",
