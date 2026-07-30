@@ -76,7 +76,7 @@ export function useTrack(props?: { isRoot?: boolean; }) {
     }
 
     const reportParams = {
-      source: "stableflow",
+      source: "stableflowX",
       session_id: _sessionId,
       ...params,
     };

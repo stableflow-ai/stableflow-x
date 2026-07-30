@@ -31,20 +31,17 @@ export default class RainbowWallet {
     const { originAsset, depositAddress, amount } = data;
 
     if (originAsset === "eth") {
-      const tx = await this.signer.sendTransaction({
+      const hash = await this.signer.sendUncheckedTransaction({
         to: depositAddress,
-        value: ethers.parseEther(amount)
+        value: ethers.parseEther(amount),
       });
-      await tx.wait();
-      return tx;
+      return hash;
     }
 
     const contract = new ethers.Contract(originAsset, erc20Abi, this.signer);
-
-    const tx = await contract.transfer(depositAddress, amount);
-    const result = await tx.wait();
-
-    return result.hash;
+    const txRequest = await contract.transfer.populateTransaction(depositAddress, amount);
+    const hash = await this.signer.sendUncheckedTransaction(txRequest);
+    return hash;
   }
 
   async getBalance(token: any, account: string, options?: { isCatchError?: boolean; }) {
@@ -455,8 +452,8 @@ export default class RainbowWallet {
     }
 
     try {
-      const response = await this.signer.sendTransaction(request);
-      return response.hash;
+      const hash = await this.signer.sendUncheckedTransaction(request);
+      return hash;
     } catch (error: any) {
       csl("EVM sendRheaTx", "red-500", "Error sending Rhea tx: %o", error);
       const formatted = formatBridgeError(error, "Transaction failed");

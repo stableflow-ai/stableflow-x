@@ -105,7 +105,7 @@ export const addTradeReport = (payload: Record<string, any>) => {
   const item: TradeReportItem = {
     id: uuidV4(),
     payload: {
-      type: 0,
+      type: 4,
       ...payload,
     },
     createdAt: Date.now(),

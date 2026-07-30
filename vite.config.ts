@@ -38,7 +38,7 @@
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 // VITE8-REVERT: import { nodePolyfills } from "vite-plugin-node-polyfills";
@@ -139,5 +139,9 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5174
+  },
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
   }
 });

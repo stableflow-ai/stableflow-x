@@ -23,7 +23,6 @@ import { csl } from "@/utils/log";
 import { addTradeReport } from "@/stores/use-trade-report";
 import { formatBridgeError, formatBridgeRpcErrorMessage, isReQuoteError, isUserRejectedError, sortQuoteData } from "../utils";
 import { useTrack } from "@/hooks/use-track";
-import { TradeProject } from "@/config/trade";
 import { tokenAddressForQuote, tokenHttpChainId, fetchRheaTokens } from "@/services/rhea/tokens";
 import { executeRheaTx } from "@/libs/wallets/execute-rhea-tx";
 import { rheaReport, pollRheaOrderStatus } from "@/services/rhea/status";
@@ -342,10 +341,9 @@ export default function useBridge(_props?: any) {
     const recipient = bridgeStore.recipientAddress || toWalletAddress || "";
     const amountWei = toBaseUnits(bridgeStore.amount, fromToken.decimals);
 
-    const reportBase = {
-      project: TradeProject.Rhea,
+    const reportBase: Record<string, any> = {
+      project: ServiceBackend[Service.Rhea],
       route: ServiceBackend[Service.Rhea],
-      sub_route: selectedQuote.router || "",
       address: sender,
       amount: bridgeStore.amount,
       out_amount: outputAmount,
@@ -356,7 +354,13 @@ export default function useBridge(_props?: any) {
       to_chain: toToken.blockchain,
       to_symbol: toToken.symbol,
       tx_hash: "",
+      volume: Number(
+        Big(amountWei).div(Big(10).pow(fromToken.decimals)).times(fromToken.price || 0)
+      ),
     };
+    if (fromChainType === "evm" && fromToken.chainId != null) {
+      reportBase.chain_id = fromToken.chainId;
+    }
 
     try {
       const swap = await rheaService.swap(
@@ -371,6 +375,14 @@ export default function useBridge(_props?: any) {
           recipient,
         },
         selectedQuote
+      );
+
+      const orderId = swap.deposit?.orderId || swap.orderId;
+      const router = swap.router || selectedQuote.router;
+      const volume = Number(
+        Big(swap.amountIn || amountWei)
+          .div(Big(10).pow(fromToken.decimals))
+          .times(fromToken.price || 0)
       );
 
       // Mobile Zcash manual: show QR deposit even when swap.tx is present
@@ -388,8 +400,8 @@ export default function useBridge(_props?: any) {
             symbol: fromToken.symbol,
             sender,
             recipient,
-            router: swap.router || selectedQuote.router,
-            orderId: swap.deposit.orderId || swap.orderId,
+            router,
+            orderId,
             estimatedOut: swap.estimatedOut || selectedQuote.estimatedOut,
             minAmountOut: swap.minAmountOut || selectedQuote.minAmountOut,
             fromTokenAddress: tokenAddressForQuote(fromToken),
@@ -398,7 +410,11 @@ export default function useBridge(_props?: any) {
             toChain: tokenHttpChainId(toToken),
             amountDisplay: bridgeStore.amount,
             outputAmount,
-            reportBase,
+            volume,
+            reportBase: {
+              ...reportBase,
+              volume,
+            },
             selectedQuote,
           },
           transferring: false,
@@ -418,9 +434,12 @@ export default function useBridge(_props?: any) {
 
         const reportData = {
           ...reportBase,
-          deposit_address: swap.deposit.depositAddress,
+          deposit_address: hash,
           tx_hash: hash,
           status: 0,
+          order_id: orderId,
+          router,
+          volume,
         };
         addTradeReport(reportData);
         getPendingList();
@@ -441,13 +460,11 @@ export default function useBridge(_props?: any) {
             from_chain: tokenHttpChainId(fromToken),
             to_chain: tokenHttpChainId(toToken),
             amount_in: amountWei,
-            router: swap.router || selectedQuote.router,
+            router,
             estimated_out: swap.estimatedOut || selectedQuote.estimatedOut,
             min_amount_out: swap.minAmountOut || selectedQuote.minAmountOut,
-            order_id: swap.deposit.orderId || swap.orderId,
+            order_id: orderId,
           });
-          const orderId = swap.deposit.orderId || swap.orderId;
-          const router = swap.router || selectedQuote.router;
           if (orderId && router) {
             void pollRheaOrderStatus({ orderId, router });
           }
@@ -480,10 +497,15 @@ export default function useBridge(_props?: any) {
       });
 
       const txHash = execResult.txHash || "";
+      const execOrderId = execResult.orderId || orderId;
       const reportData = {
         ...reportBase,
+        deposit_address: txHash || execOrderId || "",
         tx_hash: txHash,
         status: 0,
+        order_id: execOrderId,
+        router,
+        volume,
       };
       addTradeReport(reportData);
       getPendingList();
@@ -494,26 +516,25 @@ export default function useBridge(_props?: any) {
         txHash,
       });
 
-      if (txHash || execResult.orderId) {
+      if (txHash || execOrderId) {
         try {
           await rheaReport({
             sender,
             recipient,
-            from_hash: txHash || String(execResult.orderId),
+            from_hash: txHash || String(execOrderId),
             from_token: tokenAddressForQuote(fromToken),
             to_token: tokenAddressForQuote(toToken),
             from_chain: tokenHttpChainId(fromToken),
             to_chain: tokenHttpChainId(toToken),
             amount_in: amountWei,
-            router: swap.router || selectedQuote.router,
+            router,
             estimated_out: swap.estimatedOut || selectedQuote.estimatedOut,
             min_amount_out: swap.minAmountOut || selectedQuote.minAmountOut,
-            order_id: execResult.orderId || swap.orderId || swap.deposit?.orderId,
+            order_id: execOrderId,
           });
-          const orderId = execResult.orderId || swap.orderId || swap.deposit?.orderId;
-          const router = swap.statusRouter || swap.router || selectedQuote.router;
-          if (orderId && router) {
-            void pollRheaOrderStatus({ orderId, router });
+          const statusRouter = swap.statusRouter || router;
+          if (execOrderId && statusRouter) {
+            void pollRheaOrderStatus({ orderId: execOrderId, router: statusRouter });
           }
         } catch (reportErr) {
           csl("useBridge", "yellow-600", "rhea report failed: %o", reportErr);
