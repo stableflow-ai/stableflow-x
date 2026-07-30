@@ -17,20 +17,14 @@ import {
   getZcashWallet,
   isNoirWalletInstalled,
 } from "./sdk";
+import { getLogo } from "@/utils/format/logo";
 
 const NOIR_DOWNLOAD_URL =
   "https://chromewebstore.google.com/detail/noir-wallet/mfoghjbpfanobmnoemoepenjjcmfpmdn";
 
 const MANUAL_ADDRESS_KEY = "_zcash_manual_address";
 
-export const NOIR_ICON =
-  "data:image/svg+xml," +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
-      <rect width="40" height="40" rx="8" fill="#F4B728"/>
-      <text x="20" y="26" text-anchor="middle" font-size="16" font-family="Arial,sans-serif" font-weight="700" fill="#1A1A1A">N</text>
-    </svg>`
-  );
+export const NOIR_ICON = getLogo("/stableflow/wallets/logo-noir.svg");
 
 export default function ZcashProvider({
   children,
