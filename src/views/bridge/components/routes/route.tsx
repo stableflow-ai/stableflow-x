@@ -36,7 +36,7 @@ const QuoteRoute = (props: any) => {
         borderColor: selected ? "#6284F5" : "#F2F2F2",
       }}
     >
-      <div className="flex items-center justify-start gap-[5px]">
+      <div className="flex items-center justify-start gap-[5px] min-w-0">
         {logo ? (
           <img
             src={logo}
@@ -48,11 +48,19 @@ const QuoteRoute = (props: any) => {
             )}
           />
         ) : null}
-        <span className="text-[11px] text-[#444C59] font-medium hidden md:inline max-w-[90px] truncate">
-          {routerName}
-        </span>
+        {(!logo || !isMobile) && (
+          <span
+            className={clsx(
+              "text-[11px] text-[#444C59] font-medium max-w-[90px] truncate",
+              logo && "hidden md:inline",
+            )}
+            title={routerName}
+          >
+            {routerName}
+          </span>
+        )}
         {isBest && (
-          <div className="w-9 h-4.5 rounded-xl bg-[#DAF1CD] text-[#6CB53F] flex justify-center items-center text-[10px] font-medium leading-[100%]">
+          <div className="w-9 h-4.5 rounded-xl bg-[#DAF1CD] text-[#6CB53F] flex justify-center items-center text-[10px] font-medium leading-[100%] shrink-0">
             Best
           </div>
         )}

@@ -23,6 +23,7 @@ export interface BridgeState {
   modifyQuoteData: (key: string, value: any) => void;
   clearQuoteData: () => void;
   setQuoting: (key: string, requestId: number, value: boolean) => void;
+  clearQuoting: (key?: string) => void;
   getQuoting: (key?: string) => boolean;
   setAcceptPriceImpact: (value: boolean) => void;
 }
@@ -70,17 +71,24 @@ const useBridgeStore = create<BridgeState>((set, get) => ({
   setQuoting: (key, requestId, value) => {
     set((state) => {
       const _quotingMap = new Map(state.quotingMap);
-      if (_quotingMap.has(key)) {
-        const _quoting = _quotingMap.get(key);
-        if (value) {
-          _quoting![requestId] = value;
-        } else {
-          delete _quoting![requestId];
-        }
-        _quotingMap.set(key, _quoting!);
+      if (value) {
+        // Replace entire record so stale requestIds cannot keep getQuoting() true
+        _quotingMap.set(key, { [requestId]: true });
       } else {
-        _quotingMap.set(key, { [requestId]: value });
+        const _quoting = { ...(_quotingMap.get(key) || {}) };
+        delete _quoting[requestId];
+        _quotingMap.set(key, _quoting);
       }
+      return { ...state, quotingMap: _quotingMap };
+    });
+  },
+  clearQuoting: (key) => {
+    set((state) => {
+      if (!key) {
+        return { ...state, quotingMap: new Map() };
+      }
+      const _quotingMap = new Map(state.quotingMap);
+      _quotingMap.delete(key);
       return { ...state, quotingMap: _quotingMap };
     });
   },

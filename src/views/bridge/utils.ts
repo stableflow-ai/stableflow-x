@@ -169,6 +169,34 @@ export const formatBridgeRpcErrorMessage = (errorMessage: string) => {
   return errorMessage;
 };
 
+/** Parse Rhea multi-provider quote errors into short BridgeButton-friendly text. */
+export const formatRheaQuoteErrorMessage = (errorMessage: string, decimals = 6) => {
+  const message = errorMessage || "Quote failed";
+
+  const amountTooLowMatch = message.match(
+    /Amount is too low for bridge,\s*try at least\s+(\d+(?:\.\d+)?)/i
+  );
+  if (amountTooLowMatch) {
+    try {
+      const humanAmount = Big(amountTooLowMatch[1]).div(Big(10).pow(decimals)).toFixed();
+      return `Amount is too low for bridge, try at least ${humanAmount}`;
+    } catch {
+      return "Amount is too low for bridge";
+    }
+  }
+
+  if (/No liquidity available/i.test(message)) {
+    return "No liquidity available";
+  }
+
+  // Avoid dumping long multi-provider error blobs onto the button
+  if (message.length > 80 || /Cross-chain quote failed/i.test(message)) {
+    return "Quote failed";
+  }
+
+  return formatBridgeRpcErrorMessage(message);
+};
+
 export const formatBridgeError = (error: unknown, fallback = "Transfer failed") => {
   const err = error as any;
   const parts = [
