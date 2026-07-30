@@ -30,9 +30,11 @@ type NetworksProps = {
     isValid?: boolean;
   } | null;
   onRefreshQuote?: () => void;
+  isRoutes?: boolean;
+  onToggleRoutes?: () => void;
 };
 
-export default function Networks({ addressValidation, onRefreshQuote }: NetworksProps) {
+export default function Networks({ addressValidation, onRefreshQuote, isRoutes = false, onToggleRoutes }: NetworksProps) {
   const walletStore = useWalletStore();
   const bridgeStore = useBridgeStore();
   const { switchChainAsync } = useSwitchChain();
@@ -42,7 +44,6 @@ export default function Networks({ addressValidation, onRefreshQuote }: Networks
   const timer = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [isProgress, setIsProgress] = useState(false);
-  const [isRoutes, setIsRoutes] = useState(false);
 
   const toggleChain = async () => {
     if (toggleLoading || (!walletStore.fromToken && !walletStore.toToken)) return;
@@ -335,7 +336,7 @@ export default function Networks({ addressValidation, onRefreshQuote }: Networks
                   type="button"
                   className="cursor-pointer pl-2 py-1.5 hover:opacity-80 duration-150"
                   onClick={() => {
-                    setIsRoutes((prev) => !prev);
+                    onToggleRoutes?.();
                   }}
                 >
                   <LazyImage

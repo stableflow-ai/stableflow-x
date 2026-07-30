@@ -14,7 +14,6 @@ const Footer2 = lazy(() => import("./footer2"));
 const Wallet = lazy(() => import("@/sections/wallet"));
 const TokenSelectModal = lazy(() => import("@/views/bridge/components/token-select-modal"));
 const PixelBlast = lazy(() => import("@/components/pixel-blast"));
-const TransferStablecoinsLink = lazy(() => import("./transfer-stablecoins-link"));
 
 const LoadingSpinner = () => null;
 
@@ -72,14 +71,6 @@ export default function Layout() {
             ) : (
               <Suspense fallback={<LoadingSpinner />}>
                 <Footer containerRef={containerRef} />
-              </Suspense>
-            )
-          }
-
-          {
-            isHomePage && (
-              <Suspense fallback={null}>
-                <TransferStablecoinsLink />
               </Suspense>
             )
           }
