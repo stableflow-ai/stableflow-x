@@ -5,8 +5,7 @@ import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
 import chains, { chainTypes, type TokenChain, RHEA_WALLET_TYPES } from "@/config/chains";
 import { formatNumber } from "@/utils/format/number";
 import { getCachedRheaTokens } from "@/services/rhea/tokens";
-import { getStableflowIcon } from "@/utils/format/logo";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import Big from "big.js";
 import Amount from "@/components/amount";
@@ -110,11 +109,50 @@ export default function Wallet() {
   const walletsStore = useWalletsStore();
   const balancesStore = useBalancesStore();
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ evm: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const prevConnectedRef = useRef<Record<string, boolean>>({});
+
+  const connectedByType = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const type of RHEA_WALLET_TYPES) {
+      map[type] = !!(walletsStore as any)[type]?.account;
+    }
+    return map;
+  }, [
+    walletsStore.evm.account,
+    walletsStore.sol.account,
+    walletsStore.near.account,
+    walletsStore.tron.account,
+    walletsStore.aptos.account,
+    walletsStore.sui.account,
+    walletsStore.ton.account,
+    walletsStore.btc.account,
+    walletsStore.zcash.account,
+  ]);
+
+  useEffect(() => {
+    const updates: Record<string, boolean> = {};
+    let changed = false;
+    for (const type of RHEA_WALLET_TYPES) {
+      const connected = !!connectedByType[type];
+      const wasConnected = !!prevConnectedRef.current[type];
+      if (connected && !wasConnected) {
+        updates[type] = true;
+        changed = true;
+      } else if (!connected && wasConnected) {
+        updates[type] = false;
+        changed = true;
+      }
+      prevConnectedRef.current[type] = connected;
+    }
+    if (changed) {
+      setExpanded((prev) => ({ ...prev, ...updates }));
+    }
+  }, [connectedByType]);
 
   const walletConnected = useMemo(() => {
-    return RHEA_WALLET_TYPES.some((t) => !!(walletsStore as any)[t]?.account);
-  }, [walletsStore]);
+    return RHEA_WALLET_TYPES.some((t) => !!connectedByType[t]);
+  }, [connectedByType]);
 
   const holdingsByType = useMemo(() => {
     const map: Record<string, HoldingRow[]> = {};
@@ -256,14 +294,25 @@ export default function Wallet() {
                         setExpanded((prev) => ({ ...prev, [type]: !prev[type] }))
                       }
                     >
-                      <img
-                        src={getStableflowIcon("icon-arrow-down.svg")}
-                        alt=""
+                      <svg
+                        width="12"
+                        height="6"
+                        viewBox="0 0 12 6"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
                         className={clsx(
-                          "w-[10px] h-[4px] transition-transform duration-150",
-                          isExpanded && "rotate-180"
+                          "transition-transform duration-150",
+                          !isExpanded && "rotate-180"
                         )}
-                      />
+                      >
+                        <path
+                          d="M0.75 4.75L5.92241 0.75L10.75 4.75"
+                          stroke="#9FA7BA"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </button>
                   </div>
                   {type === "evm" && !isExpanded && (
