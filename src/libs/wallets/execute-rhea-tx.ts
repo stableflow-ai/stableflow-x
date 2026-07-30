@@ -13,8 +13,8 @@ type ExecuteParams = {
 
 /**
  * Dispatch Rhea swap tx payloads to the connected chain wallet.
- * Wallets may implement `sendRheaTx(tx)` for full fidelity; otherwise
- * fall back to generic transfer/sendTransaction helpers when possible.
+ * Wallets should implement `sendRheaTx(tx)` for chain-specific payloads;
+ * EVM falls back to generic sendTransaction when needed.
  */
 export async function executeRheaTx(params: ExecuteParams): Promise<{ hash: string }> {
   const { chainType, tx, wallet, fromToken, switchChainAsync } = params;
@@ -49,16 +49,6 @@ export async function executeRheaTx(params: ExecuteParams): Promise<{ hash: stri
       });
       return { hash: String(hash) };
     }
-  }
-
-  if (typeof wallet.signAndSendTransaction === "function") {
-    const hash = await wallet.signAndSendTransaction(tx);
-    return { hash: String(hash) };
-  }
-
-  if (typeof wallet.send === "function") {
-    const hash = await wallet.send({ tx, fromToken });
-    return { hash: String(hash) };
   }
 
   throw new Error(`No Rhea tx executor for chain type: ${normalizedType || chainType}`);

@@ -50,9 +50,12 @@ export default function ZcashDepositModal() {
     try {
       const reportData = {
         ...reportBase,
-        deposit_address: depositAddress,
+        deposit_address: orderId,
         tx_hash: "",
         status: 0,
+        order_id: orderId,
+        router,
+        volume: depositInfo.volume ?? reportBase.volume,
       };
       addTradeReport(reportData);
       getPendingList();

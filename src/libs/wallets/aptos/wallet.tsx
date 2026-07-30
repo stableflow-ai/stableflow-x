@@ -599,6 +599,27 @@ export default class AptosWallet {
   }
 
   /**
+   * Sign and send a Rhea Aptos tx payload ({ function, type_arguments, arguments }).
+   */
+  async sendRheaTx(tx: any): Promise<string> {
+    const functionId = tx?.function;
+    const typeArguments = tx?.typeArguments ?? tx?.type_arguments;
+    const functionArguments = tx?.functionArguments ?? tx?.arguments;
+
+    if (!functionId || !typeArguments || !functionArguments) {
+      throw new Error(
+        "Invalid Aptos Rhea tx: function, type_arguments, and arguments are required"
+      );
+    }
+
+    return this.sendTransaction({
+      function: functionId,
+      typeArguments,
+      functionArguments,
+    });
+  }
+
+  /**
   * Unified quote method that routes to specific quote methods based on type
   * @param type Service type from Service
   * @param params Parameters for the quote

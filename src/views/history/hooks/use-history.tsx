@@ -27,7 +27,7 @@ export function useHistory() {
       const response = await axios({
         url: `${BASE_API_URL}/v1/trades`,
         params: {
-          type: 0,
+          type: 4,
           status: "success,failed,continue",
           address: params?.address ?? accounts,
           page: params?.page ?? page.current,

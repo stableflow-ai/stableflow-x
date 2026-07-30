@@ -32,7 +32,7 @@ export function usePendingHistory(history?: any) {
       const response = await axios({
         url: `${BASE_API_URL}/v1/trades`,
         params: {
-          type: 0,
+          type: 4,
           status: "pending",
           address: params?.address ?? accounts,
           page: params?.page ?? page.current,
