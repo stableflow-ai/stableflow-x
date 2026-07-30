@@ -66,6 +66,24 @@ export const chainTypes: Record<string, { value: string; name: string; color: st
     icon: getStableflowChainLogo("type-sui", "svg"),
     iconGray: getStableflowChainLogo("type-sui-gray", "svg"),
   },
+  btc: {
+    value: "btc",
+    name: "Bitcoin",
+    color: "#F7931A",
+    bgColor: "#F7931A",
+    bg: "linear-gradient(90deg, rgba(247, 147, 26, 0.20) 0%, rgba(247, 147, 26, 0.00) 50%)",
+    icon: getStableflowChainLogo("type-btc", "svg"),
+    iconGray: getStableflowChainLogo("type-btc-gray", "svg"),
+  },
+  zcash: {
+    value: "zcash",
+    name: "Zcash",
+    color: "#F4B728",
+    bgColor: "#F4B728",
+    bg: "linear-gradient(90deg, rgba(244, 183, 40, 0.20) 0%, rgba(244, 183, 40, 0.00) 50%)",
+    icon: getStableflowChainLogo("type-zcash", "svg"),
+    iconGray: getStableflowChainLogo("type-zcash-gray", "svg"),
+  },
 };
 
 const HeliusRpcApiKey = import.meta.env.VITE_HELIUS_RPC_API_KEY;
@@ -250,9 +268,9 @@ const RHEA_META: Record<
   aptos: { tradeEnabled: true, walletEnabled: true, rheaHttpChainId: "aptos" },
   tron: { tradeEnabled: true, walletEnabled: true, rheaHttpChainId: "tron" },
   sui: { tradeEnabled: true, walletEnabled: true, rheaHttpChainId: "sui" },
-  ton: { tradeEnabled: false, walletEnabled: true, rheaHttpChainId: "ton" },
-  btc: { tradeEnabled: false, walletEnabled: false, rheaHttpChainId: "btc" },
-  zcash: { tradeEnabled: false, walletEnabled: false, rheaHttpChainId: "zcash" },
+  ton: { tradeEnabled: false, walletEnabled: false, rheaHttpChainId: "ton" },
+  btc: { tradeEnabled: true, walletEnabled: true, rheaHttpChainId: "btc" },
+  zcash: { tradeEnabled: true, walletEnabled: true, rheaHttpChainId: "zcash" },
 };
 
 const chains: Record<string, ChainType> = {
@@ -353,7 +371,7 @@ const chains: Record<string, ChainType> = {
   base: {
     chainName: "Base",
     blockchain: "base",
-    chainIcon: getStableflowChainLogo("Base"),
+    chainIcon: getStableflowChainLogo("base-2"),
     chainIconGray: getStableflowChainLogo("Base-gray"),
     chainType: chainTypes.evm.value,
     chainId: 8453,
@@ -702,9 +720,9 @@ const chains: Record<string, ChainType> = {
   btc: {
     chainName: "Bitcoin",
     blockchain: "btc",
-    chainIcon: getStableflowChainLogo("Bitcoin"),
-    chainIconGray: getStableflowChainLogo("Bitcoin-gray"),
-    chainType: "btc",
+    chainIcon: getStableflowChainLogo("bitcoin"),
+    chainIconGray: getStableflowChainLogo("bitcoin-gray"),
+    chainType: chainTypes.btc.value,
     blockExplorerUrl: "https://mempool.space/tx",
     blockExplorerUrls: ["https://mempool.space"],
     primaryColor: "#F7931A",
@@ -717,10 +735,11 @@ const chains: Record<string, ChainType> = {
   },
   zcash: {
     chainName: "Zcash",
-    blockchain: "zcash",
-    chainIcon: getStableflowChainLogo("Zcash"),
-    chainIconGray: getStableflowChainLogo("Zcash-gray"),
-    chainType: "zcash",
+    // API alias is "zec"; rheaHttpChainId stays "zcash" for quote/swap
+    blockchain: "zec",
+    chainIcon: getStableflowChainLogo("zcash"),
+    chainIconGray: getStableflowChainLogo("zcash-gray"),
+    chainType: chainTypes.zcash.value,
     blockExplorerUrl: "https://explorer.zcha.in/transactions",
     blockExplorerUrls: ["https://explorer.zcha.in"],
     primaryColor: "#F4B728",
@@ -788,7 +807,8 @@ export const RHEA_WALLET_TYPES: RheaWalletType[] = [
   "tron",
   "aptos",
   "sui",
-  "ton",
+  "btc",
+  "zcash",
 ];
 
 const byAlias = new Map(RHEA_CHAINS.map((c) => [c.alias, c]));
@@ -831,7 +851,7 @@ export const RHEA_NATIVE_TOKEN_IDS: Record<string, string> = {
   tron: "trx",
   sui: "0x2::sui::SUI",
   btc: "btc",
-  zcash: "nep141:zec.omft.near",
+  zec: "nep141:zec.omft.near",
 };
 
 export interface TokenChain {

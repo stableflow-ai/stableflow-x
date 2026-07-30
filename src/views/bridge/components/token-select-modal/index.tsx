@@ -138,6 +138,8 @@ export default function TokenSelectModal() {
     balancesStore.aptosBalances,
     balancesStore.suiBalances,
     balancesStore.tonBalances,
+    balancesStore.btcBalances,
+    balancesStore.zcashBalances,
   ]);
 
   const onClose = () => walletStore.set({ showTokenSelect: false });

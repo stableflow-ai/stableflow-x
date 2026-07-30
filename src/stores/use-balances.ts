@@ -9,6 +9,8 @@ export interface BalancesState {
   aptosBalances: any;
   suiBalances: any;
   tonBalances: any;
+  btcBalances: any;
+  zcashBalances: any;
   set: (params: any) => void;
 }
 
@@ -22,6 +24,8 @@ export const useBalancesStore = create(
       aptosBalances: {},
       suiBalances: {},
       tonBalances: {},
+      btcBalances: {},
+      zcashBalances: {},
       set: (params) => set(() => ({ ...params }))
     }),
     {

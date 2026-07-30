@@ -9,6 +9,7 @@ const Networks = lazy(() => import("./components/networks"));
 const BridgeButton = lazy(() => import("./components/button"));
 const HistoryDrawer = lazy(() => import("../history/drawer"));
 const PendingTransfer = lazy(() => import("./components/pending"));
+const ZcashDepositModal = lazy(() => import("./components/zcash-deposit-modal"));
 
 // Loading component
 const LoadingSpinner = () => null;
@@ -52,6 +53,9 @@ export default function Bridge() {
       </div>
       <Suspense fallback={null}>
         <HistoryDrawer />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ZcashDepositModal />
       </Suspense>
     </div>
   );

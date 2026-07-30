@@ -13,6 +13,8 @@ const LABEL = {
   aptos: "Aptos",
   ton: "Ton",
   sui: "Sui",
+  btc: "Bitcoin",
+  zcash: "Zcash",
 };
 
 export default function TypeItem({ type = "evm", token, isDisabled }: { type: WalletType; token: any; isDisabled?: boolean; }) {

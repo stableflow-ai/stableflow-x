@@ -7,7 +7,7 @@ import { getCachedRheaTokens, fetchRheaTokens } from "@/services/rhea/tokens";
 import { numberRemoveEndZero } from "@/utils/format/number";
 import { csl } from "@/utils/log";
 
-const NON_EVM_TYPES: WalletType[] = ["sol", "near", "tron", "aptos", "sui"];
+const NON_EVM_TYPES: WalletType[] = ["sol", "near", "tron", "aptos", "sui", "btc", "zcash"];
 const CONCURRENCY = 6;
 
 async function mapPool<T, R>(
@@ -162,6 +162,8 @@ export default function useNonEvmBalances(enabled = false) {
     wallets.tron?.account,
     wallets.aptos?.account,
     wallets.sui?.account,
+    wallets.btc?.account,
+    wallets.zcash?.account,
   ]);
 
   return { getBalances: debouncedGetBalances, cancel };

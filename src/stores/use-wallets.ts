@@ -1,128 +1,51 @@
 import { create } from "zustand/index";
 
-export type WalletType = "near" | "sol" | "evm" | "tron" | "aptos" | "ton" | "sui";
+export type WalletType = "near" | "sol" | "evm" | "tron" | "aptos" | "ton" | "sui" | "btc" | "zcash";
+
+type WalletEntry = {
+  account: string | null;
+  wallet: any;
+  connect: () => void;
+  disconnect: () => void;
+  walletIcon: string | null;
+  walletName: string | null;
+};
 
 interface WalletsState {
-  near: {
-    account: string | null;
-    wallet: any;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
-  sol: {
-    account: string | null;
-    wallet: any;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
-  evm: {
-    account: string | null;
-    wallet: any;
-    chainId: number | null;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
-  tron: {
-    account: string | null;
-    wallet: any;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
-  aptos: {
-    account: string | null;
-    wallet: any;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
-  ton: {
-    account: string | null;
-    wallet: any;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
-  sui: {
-    account: string | null;
-    wallet: any;
-    connect: () => void;
-    disconnect: () => void;
-    walletIcon: string | null;
-    walletName: string | null;
-  };
+  near: WalletEntry;
+  sol: WalletEntry;
+  evm: WalletEntry & { chainId: number | null };
+  tron: WalletEntry;
+  aptos: WalletEntry;
+  ton: WalletEntry;
+  sui: WalletEntry;
+  btc: WalletEntry;
+  zcash: WalletEntry;
   set: (params: any) => void;
 }
 
+const emptyWallet = (): WalletEntry => ({
+  account: null,
+  wallet: null,
+  connect: () => { },
+  disconnect: () => { },
+  walletIcon: null,
+  walletName: null,
+});
+
 const useWalletsStore = create<WalletsState>((set) => ({
-  near: {
-    account: null,
-    wallet: null,
-    connect: () => { },
-    disconnect: () => { },
-    walletIcon: null,
-    walletName: null,
-  },
-  sol: {
-    account: null,
-    wallet: null,
-    connect: () => { },
-    disconnect: () => { },
-    walletIcon: null,
-    walletName: null,
-  },
+  near: emptyWallet(),
+  sol: emptyWallet(),
   evm: {
-    account: null,
-    wallet: null,
+    ...emptyWallet(),
     chainId: null,
-    connect: () => { },
-    disconnect: () => { },
-    walletIcon: null,
-    walletName: null,
   },
-  tron: {
-    account: null,
-    wallet: null,
-    connect: () => { },
-    disconnect: () => { },
-    walletIcon: null,
-    walletName: null,
-  },
-  aptos: {
-    account: null,
-    wallet: null,
-    connect: () => { },
-    disconnect: () => { },
-    walletIcon: null,
-    walletName: null,
-  },
-  ton: {
-    account: null,
-    wallet: null,
-    chainId: null,
-    connect: () => {},
-    disconnect: () => {},
-    walletIcon: null,
-    walletName: null
-  },
-  sui: {
-    account: null,
-    wallet: null,
-    chainId: null,
-    connect: () => { },
-    disconnect: () => { },
-    walletIcon: null,
-    walletName: null
-  },
+  tron: emptyWallet(),
+  aptos: emptyWallet(),
+  ton: emptyWallet(),
+  sui: emptyWallet(),
+  btc: emptyWallet(),
+  zcash: emptyWallet(),
   set: (params) => set(() => ({ ...params }))
 }));
 
