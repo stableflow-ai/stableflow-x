@@ -1,6 +1,6 @@
 import erc20Abi from "@/config/abi/erc20";
 import { numberRemoveEndZero } from "@/utils/format/number";
-import { getRheaNativePrice } from "@/services/rhea/tokens";
+import { getRheaNativePrice, isEvmNativeBalanceToken } from "@/services/rhea/tokens";
 import { formatBridgeError } from "@/views/bridge/utils";
 import Big from "big.js";
 import { ethers } from "ethers";
@@ -53,7 +53,14 @@ export default class RainbowWallet {
         provider = evmRpcFallbackProvider(token);
       }
 
-      if (token.symbol === "eth" || token.symbol === "ETH" || token.symbol === "native") {
+      const addr = (token.contractAddress || "").toLowerCase();
+      const isNative =
+        token.symbol === "native" ||
+        isEvmNativeBalanceToken(token) ||
+        addr === "0x0000000000000000000000000000000000000000" ||
+        /^nep\d+:/i.test(addr);
+
+      if (isNative) {
         const balance = await provider.getBalance(account);
         return balance.toString();
       }
