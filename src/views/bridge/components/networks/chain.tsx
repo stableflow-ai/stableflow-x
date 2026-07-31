@@ -15,7 +15,6 @@ export default function Chain({ token, isTo }: any) {
   const openTokenSelect = () => {
     walletStore.set({
       showTokenSelect: true,
-      showWallet: false,
       isTo,
     });
   };

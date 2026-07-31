@@ -11,6 +11,7 @@ import Big from "big.js";
 import Amount from "@/components/amount";
 import ChainTypeIcon from "@/components/chain-type-icon";
 import Skeleton from "@/components/skeleton";
+import useIsMobile from "@/hooks/use-is-mobile";
 import Address from "./address";
 
 const EVM_TRADE_CHAINS = Object.values(chains).filter(
@@ -108,6 +109,7 @@ export default function Wallet() {
   const walletStore = useWalletStore();
   const walletsStore = useWalletsStore();
   const balancesStore = useBalancesStore();
+  const isMobile = useIsMobile();
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const prevConnectedRef = useRef<Record<string, boolean>>({});
@@ -209,6 +211,10 @@ export default function Wallet() {
       onClose={() => walletStore.set({ showWallet: false })}
       className="flex flex-col justify-between items-stretch"
       titleClassName="shrink-0"
+      showMask={isMobile}
+      maskClosable={isMobile}
+      lockScroll={isMobile}
+      showCollapse={!isMobile}
     >
       <div className="flex-1 h-0">
         <div className="w-full h-full overflow-y-auto pt-[8px] pb-[20px] px-[10px] flex flex-col gap-[10px]">

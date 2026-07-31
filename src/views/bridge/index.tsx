@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import useBridge from "./hooks/use-bridge";
+import { usePendingHistory } from "@/views/history/hooks/use-pending-history";
 import { useTrack } from "@/hooks/use-track";
 import { useMaintenanceStore } from "@/stores/use-maintenance";
 import clsx from "clsx";
@@ -16,6 +17,8 @@ const TransferStablecoinsLink = lazy(() => import("@/layouts/transfer-stablecoin
 const LoadingSpinner = () => null;
 
 export default function Bridge() {
+  // Single auto-poller for pending badge; useBridge/ZcashDepositModal use autoPoll: false
+  usePendingHistory();
   const { onTransfer, addressValidation, errorChain, onRefreshQuote } = useBridge();
   const { addOpen } = useTrack();
   const bannerVisible = useMaintenanceStore((s) => s.getBannerVisible());

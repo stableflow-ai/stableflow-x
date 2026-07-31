@@ -35,6 +35,7 @@ const useWalletStore = create<WalletState>()(
       partialize: (state) => ({
         usdtExpand: state.usdtExpand,
         evmExpand: state.evmExpand,
+        showWallet: state.showWallet,
       }),
     }
   )
