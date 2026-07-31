@@ -9,6 +9,7 @@ import type {
 } from "./types";
 import type { TokenChain } from "@/config/chains";
 import { getRouterDisplayName } from "@/services/constants";
+import { numberRemoveEndZero } from "@/utils/format/number";
 
 const asString = (v: unknown, fallback = "0"): string => {
   if (v == null) return fallback;
@@ -26,13 +27,21 @@ const pickMinOut = (q: RheaQuoteRaw): string => {
 const pickPriceImpact = (
   q: RheaQuoteRaw,
   route: any,
-  estimatedOutUsd?: string | number
+  estimatedOutUsd?: string | number,
+  router = ""
 ): { priceImpactUsd?: string; priceImpactUsdPercent?: string } => {
   if (route?.priceImpactUsdPercent != null || route?.priceImpactUsd != null) {
+    let priceImpactUsdPercent: string | undefined;
+    if (route?.priceImpactUsdPercent != null) {
+      try {
+        priceImpactUsdPercent = numberRemoveEndZero(Big(asString(route.priceImpactUsdPercent)).times(100).toFixed(4));
+      } catch {
+        priceImpactUsdPercent = asString(route.priceImpactUsdPercent);
+      }
+    }
     return {
       priceImpactUsd: route?.priceImpactUsd != null ? asString(route.priceImpactUsd) : undefined,
-      priceImpactUsdPercent:
-        route?.priceImpactUsdPercent != null ? asString(route.priceImpactUsdPercent) : undefined,
+      priceImpactUsdPercent,
     };
   }
 
@@ -77,7 +86,7 @@ export function normalizeQuote(
   const estimatedOutUsd =
     (q.estimatedOutUsd as string | number | undefined) ?? route?.outputAmountUsd;
   const { fee, totalFeeUsd } = formatFeeItems(resolveQuoteFees(q, ctx));
-  const priceImpact = pickPriceImpact(q, route, estimatedOutUsd);
+  const priceImpact = pickPriceImpact(q, route, estimatedOutUsd, router);
 
   return {
     key: quoteKey(q, index),
