@@ -3,6 +3,7 @@ import type { RheaLendingToken } from "./types";
 import chains, {
   type TokenChain,
   RHEA_TOKEN_QUERY_CHAINS,
+  RHEA_TRADE_ALIASES,
   RHEA_NATIVE_TOKEN_IDS,
   getRheaChainByAlias,
   aliasToHttpChainId,
@@ -13,6 +14,14 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 let cache: { tokens: TokenChain[]; fetchedAt: number } | null = null;
 let inflight: Promise<TokenChain[]> | null = null;
+
+/**
+ * Local allowlist of Rhea trade aliases (from RHEA_META tradeEnabled).
+ * Intentionally filter by this set — do not trust the API chain list blindly.
+ * When Rhea adds a chain, enable it via RHEA_META + local chain config first
+ * (see checklist above RHEA_META in config/chains.ts).
+ */
+const RHEA_TRADE_ALIAS_ALLOWLIST = new Set(RHEA_TRADE_ALIASES);
 
 const resolveLocalChain = (alias: string) => {
   const cfg = getRheaChainByAlias(alias);
@@ -27,6 +36,9 @@ const resolveLocalChain = (alias: string) => {
 export const mapLendingTokenToTokenChain = (item: RheaLendingToken): TokenChain | null => {
   const alias = (item.blockchain || "").toLowerCase();
   if (!alias) return null;
+
+  // Drop unknown / unsupported chains even if the API returns them.
+  if (!RHEA_TRADE_ALIAS_ALLOWLIST.has(alias)) return null;
 
   const symbol = item.symbol || "UNKNOWN";
   if (/DEPRECATED/i.test(symbol)) return null;
@@ -76,6 +88,7 @@ export async function fetchRheaTokens(force = false): Promise<TokenChain[]> {
   if (inflight) return inflight;
 
   inflight = (async () => {
+    // Request only locally enabled chains; response is filtered again by allowlist.
     const path = `/get_multichain_lending_tokens_data?chains=${encodeURIComponent(RHEA_TOKEN_QUERY_CHAINS)}`;
     const raw = await rheaFetch<RheaLendingToken[]>(path, { method: "GET" });
     const list = Array.isArray(raw) ? raw : [];

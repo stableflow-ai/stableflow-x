@@ -20,6 +20,7 @@ import {
   flare,
   fraxtal,
   katana,
+  monad,
 } from "viem/chains";
 import {
   WagmiProvider,
@@ -152,6 +153,7 @@ const RpcUrls: any = {
   [berachain.id]: fallback(getChainRpcUrl("Berachain").rpcUrls.map((rpc) => http(rpc, getSignedRpcHttpConfig(rpc, "berachain")))),
   [xLayer.id]: fallback(getChainRpcUrl("X Layer").rpcUrls.map((rpc) => http(rpc, getSignedRpcHttpConfig(rpc, "xlayer")))),
   [plasma.id]: fallback(getChainRpcUrl("Plasma").rpcUrls.map((rpc) => http(rpc, getSignedRpcHttpConfig(rpc, "plasma")))),
+  [monad.id]: fallback(getChainRpcUrl("Monad").rpcUrls.map((rpc) => http(rpc))),
   [mantle.id]: fallback(getChainRpcUrl("Mantle").rpcUrls.map((rpc) => http(rpc, getSignedRpcHttpConfig(rpc, "mantle")))),
   [megaeth.id]: fallback(getChainRpcUrl("MegaETH").rpcUrls.map((rpc) => http(rpc, getSignedRpcHttpConfig(rpc, "megaeth")))),
   [ink.id]: fallback(getChainRpcUrl("Ink").rpcUrls.map((rpc) => http(rpc, getSignedRpcHttpConfig(rpc, "ink")))),
@@ -187,6 +189,10 @@ const connectors: any = connectorsForWallets(
   }
 );
 
+// EVM chains used for Rhea trade must be registered here (chains + transports),
+// or wallet switch / sendTransaction will fail even if the UI shows the chain.
+// When adding a new Rhea EVM chain: import from viem/chains (or defineChain),
+// add to chains[], RpcUrls, and transports below.
 const wagmiConfig = createConfig({
   connectors,
   chains: [
@@ -201,6 +207,7 @@ const wagmiConfig = createConfig({
     berachain,
     xLayer,
     plasma,
+    monad,
     mantle,
     megaeth,
     ink,
@@ -224,6 +231,7 @@ const wagmiConfig = createConfig({
     [berachain.id]: RpcUrls[berachain.id] || http(),
     [xLayer.id]: RpcUrls[xLayer.id] || http(),
     [plasma.id]: RpcUrls[plasma.id] || http(),
+    [monad.id]: RpcUrls[monad.id] || http(),
     [mantle.id]: RpcUrls[mantle.id] || http(),
     [megaeth.id]: RpcUrls[megaeth.id] || http(),
     [ink.id]: RpcUrls[ink.id] || http(),

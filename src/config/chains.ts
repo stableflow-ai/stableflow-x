@@ -137,6 +137,10 @@ export const chainsRpcUrls: Record<string, string[]> = {
     "https://rpc.berachain.com",
     "https://berachain-rpc.publicnode.com",
   ],
+  "Monad": [
+    "https://rpc.monad.xyz",
+    "https://rpc1.monad.xyz",
+  ],
   "Tron": [
     `${ProxyRpcHost}/tron`,
     "https://tron-rpc.publicnode.com",
@@ -247,7 +251,20 @@ export type ChainType = {
   rheaHttpChainId?: string;
 };
 
-/** Rhea trade/wallet flags keyed by chains local key */
+/**
+ * Rhea trade/wallet flags keyed by chains local key.
+ *
+ * Local config is the only allowlist. Tokens from chains not listed here
+ * (or with tradeEnabled: false) are dropped even if the Rhea API returns them.
+ *
+ * To support a new Rhea chain:
+ * 1. Add an entry here with tradeEnabled / walletEnabled / rheaHttpChainId
+ * 2. Add full chains.<key> metadata below (alias, icons, RPC, explorer, native)
+ * 3. For EVM: also register the chain in RainbowKit/wagmi (rainbow/provider.tsx)
+ * 4. Add RPC URLs to chainsRpcUrls if needed
+ * 5. Add native token id to RHEA_NATIVE_TOKEN_IDS when applicable
+ * 6. Non-EVM: ensure wallet adapter exists in RHEA_WALLET_TYPES / providers
+ */
 const RHEA_META: Record<
   string,
   { tradeEnabled: boolean; walletEnabled: boolean; rheaHttpChainId: string }
@@ -481,8 +498,8 @@ const chains: Record<string, ChainType> = {
   monad: {
     chainName: "Monad",
     blockchain: "monad",
-    chainIcon: getStableflowChainLogo("Ethereum"),
-    chainIconGray: getStableflowChainLogo("Ethereum-gray"),
+    chainIcon: getStableflowChainLogo("Monad"),
+    chainIconGray: getStableflowChainLogo("Monad-gray"),
     chainType: chainTypes.evm.value,
     chainId: 143,
     blockExplorerUrl: "https://monadvision.com/tx",
@@ -492,8 +509,7 @@ const chains: Record<string, ChainType> = {
       symbol: "MON",
       decimals: 18,
     },
-    rpcUrls: ["https://rpc.monad.xyz"],
-    rpcUrl: "https://rpc.monad.xyz",
+    ...getChainRpcUrl("Monad"),
   },
   xlayer: {
     chainName: "X Layer",
