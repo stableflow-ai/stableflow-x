@@ -60,6 +60,7 @@ export function useEvmGasFees() {
           csl("evm-gas-fees", "yellow-600", "%s getFeeData failed: %o", chain.chainName, r.reason);
         }
       }
+      console.log("evm gas fees: %o", patch)
       set({
         byChainId: patch,
         loading: false,

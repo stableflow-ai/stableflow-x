@@ -7,6 +7,10 @@ import {
   type TokenChain,
 } from "@/config/chains";
 import useEvmGasFeesStore from "@/stores/use-evm-gas-fees";
+import {
+  DEFAULT_EVM_AGGREGATOR_GAS_UNITS,
+  HEURISTIC_EVM_FEE_ROUTERS,
+} from "./config";
 
 const DEFAULT_GAS_PRICE_WEI = 20n * 10n ** 9n; // 20 gwei
 
@@ -223,8 +227,12 @@ const buildCowFees = (q: RheaQuoteRaw, ctx: FeeContext): RheaFeeItem[] => {
   return fees;
 };
 
-const buildGasEstimateFees = (q: RheaQuoteRaw, ctx: FeeContext): RheaFeeItem[] => {
-  const gasUnits = pickTopLevelGasUnits(q);
+const buildGasEstimateFees = (
+  q: RheaQuoteRaw,
+  ctx: FeeContext,
+  fallbackGasUnits?: string | null
+): RheaFeeItem[] => {
+  const gasUnits = pickTopLevelGasUnits(q) || fallbackGasUnits || null;
   if (!gasUnits) return [];
   // EVM gas units × wei gasPrice only; skip non-EVM (no comparable gasPrice cache)
   const chainType = ctx.fromToken?.chainType;
@@ -255,8 +263,13 @@ export function resolveQuoteFees(q: RheaQuoteRaw, ctx: FeeContext = {}): RheaFee
     return buildCowFees(q, ctx);
   }
 
-  // Generic: gasEstimate / gas units → Network Fee
-  return buildGasEstimateFees(q, ctx);
+  // bitget / binance: no gasEstimate in quote — heuristic Network Fee (skip nearintents)
+  const heuristicUnits = HEURISTIC_EVM_FEE_ROUTERS.has(router)
+    ? DEFAULT_EVM_AGGREGATOR_GAS_UNITS
+    : null;
+
+  // Generic: gasEstimate / gas units → Network Fee; optional router heuristic fallback
+  return buildGasEstimateFees(q, ctx, heuristicUnits);
 }
 
 export function formatFeeItems(fees: RheaFeeItem[]): {

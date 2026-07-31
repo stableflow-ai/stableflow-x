@@ -25,10 +25,28 @@ const unwrapApproveTx = (item: RheaApproveItem): RheaSwapTx => {
   return item as RheaSwapTx;
 };
 
+const runApproves = async (
+  swap: RheaSwapResponse,
+  deps: { executeTx: RheaTxExecutor }
+) => {
+  if (!swap.approve) return;
+  const fromChain = String(swap.fromChain || "");
+  const chainType = String(swap.chainType || "evm");
+  const approves = Array.isArray(swap.approve) ? swap.approve : [swap.approve];
+  for (const approveItem of approves) {
+    await deps.executeTx({
+      chainType,
+      fromChain,
+      tx: unwrapApproveTx(approveItem),
+      approve: null,
+    });
+  }
+};
+
 /**
  * Execute a Rhea /swap response via injected chain wallet helpers.
  * - transaction: optional approve(s) then main tx
- * - signature: sign signingRequest then POST /order-submit
+ * - signature: optional approve(s), sign signingRequest, then POST /order-submit
  */
 export async function executeRheaSwapResponse(
   swap: RheaSwapResponse,
@@ -46,6 +64,8 @@ export async function executeRheaSwapResponse(
     if (!deps.signRequest) {
       throw new Error("No signer available for signature execution");
     }
+    // CoW etc. may require Vault Relayer approval before the signed order can settle
+    await runApproves(swap, deps);
     const signed = await deps.signRequest(swap.signingRequest);
     const submitted = await rheaOrderSubmit(signed);
     const orderId =
@@ -55,22 +75,12 @@ export async function executeRheaSwapResponse(
     return { orderId };
   }
 
-  const fromChain = String(swap.fromChain || "");
-  const chainType = String(swap.chainType || "evm");
-
-  if (swap.needsApprove && swap.approve) {
-    const approves = Array.isArray(swap.approve) ? swap.approve : [swap.approve];
-    for (const approveItem of approves) {
-      await deps.executeTx({
-        chainType,
-        fromChain,
-        tx: unwrapApproveTx(approveItem),
-        approve: null,
-      });
-    }
-  }
+  // Prefer approve presence (API docs); needsApprove is auxiliary
+  await runApproves(swap, deps);
 
   if (swap.tx) {
+    const fromChain = String(swap.fromChain || "");
+    const chainType = String(swap.chainType || "evm");
     const { hash } = await deps.executeTx({
       chainType,
       fromChain,

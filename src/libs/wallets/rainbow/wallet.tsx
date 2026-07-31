@@ -582,4 +582,77 @@ export default class RainbowWallet {
       s,
     };
   }
+
+  /**
+   * Sign a Rhea signingRequest (e.g. CoW EIP-712 order) for POST /order-submit.
+   * Prefer payload.order string fields for message values to avoid JSON number precision loss.
+   */
+  async signRheaRequest(req: any): Promise<Record<string, unknown>> {
+    if (!this.signer) {
+      throw new Error("EVM wallet not connected");
+    }
+
+    const typedData = req?.typedData;
+    if (!typedData?.domain || !typedData?.types || !typedData?.primaryType) {
+      throw new Error("Invalid Rhea signingRequest: missing typedData");
+    }
+
+    const domain = { ...typedData.domain };
+    if (domain.chainId != null) {
+      domain.chainId = Number(domain.chainId);
+    }
+
+    const types: Record<string, Array<{ name: string; type: string }>> = {};
+    for (const [key, value] of Object.entries(typedData.types as Record<string, unknown>)) {
+      if (key === "EIP712Domain") continue;
+      if (Array.isArray(value)) types[key] = value as Array<{ name: string; type: string }>;
+    }
+
+    const order = req?.payload?.order;
+    const primaryType = String(typedData.primaryType);
+    const typeFields = types[primaryType];
+    let message: Record<string, unknown> =
+      typedData.message && typeof typedData.message === "object"
+        ? { ...typedData.message }
+        : {};
+
+    if (order && typeof order === "object" && Array.isArray(typeFields)) {
+      message = {};
+      for (const field of typeFields) {
+        const fromOrder = (order as Record<string, unknown>)[field.name];
+        const fromTyped = (typedData.message as Record<string, unknown> | undefined)?.[field.name];
+        const value = fromOrder !== undefined ? fromOrder : fromTyped;
+        if (value === undefined) {
+          throw new Error(`Invalid Rhea signingRequest: missing field ${field.name}`);
+        }
+        message[field.name] = value;
+      }
+    }
+
+    csl("EVM signRheaRequest", "blue-900", "domain: %o types: %o message: %o", domain, types, message);
+
+    try {
+      const signature = await this.signer.signTypedData(domain, types, message);
+      const submitParams =
+        req?.submit?.params && typeof req.submit.params === "object"
+          ? { ...req.submit.params }
+          : {
+              quoteId: req?.quoteId,
+              router: req?.router,
+              signingScheme: req?.signingScheme || "eip712",
+            };
+
+      return {
+        ...submitParams,
+        signature,
+      };
+    } catch (error: any) {
+      csl("EVM signRheaRequest", "red-500", "signTypedData failed: %o", error);
+      const formatted = formatBridgeError(error, "Signature failed");
+      if (formatted === USER_REJECTED_TRANSACTION_MESSAGE) {
+        throw new Error(USER_REJECTED_TRANSACTION_MESSAGE);
+      }
+      throw new Error(formatted);
+    }
+  }
 }
