@@ -47,7 +47,7 @@ const fromBaseUnits = (amount: string, decimals: number) => {
 };
 
 export default function useBridge(_props?: any) {
-  const { debouncedGetList: getPendingList } = usePendingHistory();
+  const { debouncedGetList: getPendingList } = usePendingHistory({ autoPoll: false });
   const wallets = useWalletsStore();
   const historyStore = useHistoryStore();
   const configStore = useConfigStore();
@@ -416,6 +416,7 @@ export default function useBridge(_props?: any) {
             toTokenAddress: tokenAddressForQuote(toToken),
             fromChain: tokenHttpChainId(fromToken),
             toChain: tokenHttpChainId(toToken),
+            isCrossChain: swap.isCrossChain,
             amountDisplay: bridgeStore.amount,
             outputAmount,
             volume,
@@ -471,19 +472,24 @@ export default function useBridge(_props?: any) {
         });
 
         try {
+          const fromChain = tokenHttpChainId(fromToken);
+          const toChain = tokenHttpChainId(toToken);
           await rheaReport({
             sender,
             recipient,
             from_hash: hash,
             from_token: tokenAddressForQuote(fromToken),
             to_token: tokenAddressForQuote(toToken),
-            from_chain: tokenHttpChainId(fromToken),
-            to_chain: tokenHttpChainId(toToken),
+            deposit_address: swap.deposit?.depositAddress ?? "",
+            from_chain: fromChain,
+            to_chain: toChain,
             amount_in: amountWei,
             router,
             estimated_out: swap.estimatedOut || selectedQuote.estimatedOut,
             min_amount_out: swap.minAmountOut || selectedQuote.minAmountOut,
-            order_id: orderId,
+            swap_id: orderId,
+            swapId: orderId,
+            is_cross_chain: swap.isCrossChain ?? fromChain !== toChain,
           });
           if (orderId && router) {
             void pollRheaOrderStatus({ orderId, router });
@@ -553,19 +559,24 @@ export default function useBridge(_props?: any) {
 
       if (txHash || execOrderId) {
         try {
+          const fromChain = tokenHttpChainId(fromToken);
+          const toChain = tokenHttpChainId(toToken);
           await rheaReport({
             sender,
             recipient,
             from_hash: txHash || String(execOrderId),
             from_token: tokenAddressForQuote(fromToken),
             to_token: tokenAddressForQuote(toToken),
-            from_chain: tokenHttpChainId(fromToken),
-            to_chain: tokenHttpChainId(toToken),
+            deposit_address: swap.deposit?.depositAddress ?? "",
+            from_chain: fromChain,
+            to_chain: toChain,
             amount_in: amountWei,
             router,
             estimated_out: swap.estimatedOut || selectedQuote.estimatedOut,
             min_amount_out: swap.minAmountOut || selectedQuote.minAmountOut,
-            order_id: execOrderId,
+            swap_id: execOrderId,
+            swapId: execOrderId,
+            is_cross_chain: swap.isCrossChain ?? fromChain !== toChain,
           });
           const statusRouter = swap.statusRouter || router;
           if (execOrderId && statusRouter) {

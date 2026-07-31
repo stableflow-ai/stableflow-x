@@ -18,7 +18,7 @@ export default function ZcashDepositModal() {
   const depositInfo = bridgeStore.depositInfo;
   const { onCopy } = useCopy();
   const toast = useToast();
-  const { debouncedGetList: getPendingList } = usePendingHistory();
+  const { debouncedGetList: getPendingList } = usePendingHistory({ autoPoll: false });
   const { addTransfer: addTransferTrack } = useTrack();
   const [submitting, setSubmitting] = useState(false);
 
@@ -70,19 +70,27 @@ export default function ZcashDepositModal() {
       }
 
       try {
+        const fromChain = String(depositInfo.fromChain ?? "");
+        const toChain = String(depositInfo.toChain ?? "");
         await rheaReport({
           sender: depositInfo.sender,
           recipient: depositInfo.recipient,
-          from_hash: "",
+          from_hash: orderId || "",
           from_token: depositInfo.fromTokenAddress,
           to_token: depositInfo.toTokenAddress,
-          from_chain: depositInfo.fromChain,
-          to_chain: depositInfo.toChain,
+          deposit_address: depositInfo.depositAddress ?? "",
+          from_chain: fromChain,
+          to_chain: toChain,
           amount_in: depositInfo.amount,
           router,
           estimated_out: depositInfo.estimatedOut,
           min_amount_out: depositInfo.minAmountOut,
-          order_id: orderId,
+          swap_id: orderId,
+          swapId: orderId,
+          is_cross_chain:
+            depositInfo.isCrossChain ??
+            depositInfo.selectedQuote?.isCrossChain ??
+            (fromChain !== toChain && !!fromChain && !!toChain),
         });
 
         if (orderId && router) {

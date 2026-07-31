@@ -9,7 +9,21 @@ import { useDebounceFn, useRequest } from "ahooks";
 import axios from "axios";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-export function usePendingHistory(history?: any) {
+type UsePendingHistoryOptions = {
+  autoPoll?: boolean;
+  history?: any;
+};
+
+export function usePendingHistory(options?: UsePendingHistoryOptions | any) {
+  // Support legacy call shape: usePendingHistory(history)
+  const isLegacyHistoryArg =
+    options != null &&
+    typeof options === "object" &&
+    !("autoPoll" in options) &&
+    ("getList" in options || "page" in options);
+  const history = isLegacyHistoryArg ? options : options?.history;
+  const autoPoll = isLegacyHistoryArg ? true : options?.autoPoll !== false;
+
   const wallets = useWalletsStore();
   const historyStore = useHistoryStore();
 
@@ -29,6 +43,11 @@ export function usePendingHistory(history?: any) {
   const listPollingRef = useRef<any>(null);
   const { runAsync: getList, loading } = useRequest(async (params?: any) => {
     try {
+      if (listPollingRef.current) {
+        clearTimeout(listPollingRef.current);
+        listPollingRef.current = null;
+      }
+
       const response = await axios({
         url: `${BASE_API_URL}/v1/trades`,
         params: {
@@ -115,7 +134,7 @@ export function usePendingHistory(history?: any) {
         };
       });
 
-      if (_list.length > 0) {
+      if (autoPoll && _list.length > 0) {
         listPollingRef.current = setTimeout(() => {
           getList(params);
         }, 10000);
@@ -132,6 +151,16 @@ export function usePendingHistory(history?: any) {
   });
 
   useEffect(() => {
+    if (!autoPoll) {
+      return () => {
+        cancelGetList();
+        if (listPollingRef.current) {
+          clearTimeout(listPollingRef.current);
+          listPollingRef.current = null;
+        }
+      };
+    }
+
     if (!accounts) {
       setList([]);
       historyStore.updatePendingNumber(0);
@@ -145,7 +174,13 @@ export function usePendingHistory(history?: any) {
           totaPage: 0,
         };
       });
-      return;
+      return () => {
+        cancelGetList();
+        if (listPollingRef.current) {
+          clearTimeout(listPollingRef.current);
+          listPollingRef.current = null;
+        }
+      };
     }
 
     // Initial request (debounced)
@@ -156,8 +191,12 @@ export function usePendingHistory(history?: any) {
 
     return () => {
       cancelGetList();
+      if (listPollingRef.current) {
+        clearTimeout(listPollingRef.current);
+        listPollingRef.current = null;
+      }
     };
-  }, [accounts]);
+  }, [accounts, autoPoll]);
 
   return {
     list,

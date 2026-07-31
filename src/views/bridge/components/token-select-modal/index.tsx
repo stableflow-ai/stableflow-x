@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import ReactDOM from "react-dom";
 import useWalletStore from "@/stores/use-wallet";
 import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
 import { fetchRheaTokens, getCachedRheaTokens } from "@/services/rhea/tokens";
@@ -220,14 +221,16 @@ export default function TokenSelectModal() {
   }
 
   if (!walletStore.showTokenSelect) return null;
+  if (typeof window === "undefined") return null;
 
-  return (
+  return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/30 px-3">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div className="relative w-full max-w-[649px] h-[682px] max-h-[90vh] bg-[#EDF0F7] border border-[#F2F2F2] rounded-[12px] flex overflow-hidden">
         <div className="w-[275px] shrink-0 p-[20px] overflow-y-auto">{chainPane}</div>
         <div className="flex-1 bg-white p-[20px] flex flex-col min-w-0">{tokenPane}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
