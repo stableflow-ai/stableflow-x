@@ -1,7 +1,12 @@
 import useWalletsStore from "@/stores/use-wallets";
 import { useEffect, useRef } from "react";
 import axios from "axios";
-import { buildEvmBalancesTokens, type EvmBalancesToken } from "@/config/tokens";
+import {
+  buildEvmBalancesTokens,
+  collectEvmNativeTokens,
+  isValidEvmContractAddress,
+  type EvmBalancesToken,
+} from "@/config/tokens";
 import Big from "big.js";
 import useBalancesStore from "@/stores/use-balances";
 import { useDebounceFn } from "ahooks";
@@ -38,7 +43,14 @@ function applyApiBalances(
       const currentTokenIndex = currentTokenChain?.tokens
         ?.map((address) => address.toLowerCase())
         ?.indexOf?.(sl.address.toLowerCase());
-      let decimals = 6;
+
+      const tokenMeta = rheaTokens.find(
+        (t) =>
+          String(t.chainId) === String(chainId) &&
+          t.contractAddress?.toLowerCase() === sl.address.toLowerCase()
+      );
+
+      let decimals = tokenMeta?.decimals ?? 6;
       if (
         currentTokenChain &&
         typeof currentTokenIndex === "number" &&
@@ -54,11 +66,6 @@ function applyApiBalances(
       target[chainId][sl.address] = amount;
       target[chainId][sl.address.toLowerCase()] = amount;
 
-      const tokenMeta = rheaTokens.find(
-        (t) =>
-          String(t.chainId) === String(chainId) &&
-          t.contractAddress?.toLowerCase() === sl.address.toLowerCase()
-      );
       const price = Number(tokenMeta?.price || 0);
       if (price > 0) {
         try {
@@ -110,6 +117,7 @@ async function fetchBalancesViaRpc(
 
     const provider = evmRpcFallbackProvider(currentChain as unknown as TokenChain);
     for (const address of token.tokens) {
+      if (!isValidEvmContractAddress(address)) continue;
       promises.push({
         chainId: token.chain_id,
         promise: (async () => {
@@ -133,6 +141,62 @@ async function fetchBalancesViaRpc(
     if (item.status !== "fulfilled") continue;
     if (!result[chainId]) result[chainId] = [];
     result[chainId].push(item.value);
+  }
+
+  return result;
+}
+
+/** Fetch native gas balances via eth_getBalance; store under each token's contractAddress key. */
+async function fetchNativeBalancesViaRpc(
+  requestAccount: string,
+  nativeTokens: TokenChain[],
+  isRequestStale: () => boolean
+): Promise<Record<string, ApiTokenBalance[]>> {
+  const result: Record<string, ApiTokenBalance[]> = {};
+  const byChain = new Map<number, TokenChain[]>();
+
+  for (const token of nativeTokens) {
+    if (token.chainId == null || !token.contractAddress) continue;
+    const list = byChain.get(token.chainId) || [];
+    list.push(token);
+    byChain.set(token.chainId, list);
+  }
+
+  const chainEntries = Array.from(byChain.entries());
+  const settled = await Promise.allSettled(
+    chainEntries.map(async ([chainId, tokens]) => {
+      const currentChain = Object.values(chains).find((chain) => chain.chainId === chainId);
+      if (!currentChain) return { chainId, balances: [] as ApiTokenBalance[] };
+
+      const provider = evmRpcFallbackProvider(currentChain as unknown as TokenChain);
+      try {
+        const balance = (await provider.getBalance(requestAccount)).toString();
+        return {
+          chainId,
+          balances: tokens.map((t) => ({
+            address: t.contractAddress,
+            balance,
+          })),
+        };
+      } catch {
+        return {
+          chainId,
+          balances: tokens.map((t) => ({
+            address: t.contractAddress,
+            balance: "0",
+          })),
+        };
+      }
+    })
+  );
+
+  for (const item of settled) {
+    if (isRequestStale()) break;
+    if (item.status !== "fulfilled") continue;
+    const { chainId, balances } = item.value;
+    if (!balances.length) continue;
+    if (!result[chainId]) result[chainId] = [];
+    result[chainId].push(...balances);
   }
 
   return result;
@@ -182,7 +246,8 @@ export default function useEvmBalances(enabled = false) {
       }
     }
     const _evmBalancesTokens: EvmBalancesToken[] = buildEvmBalancesTokens(tokens);
-    if (!_evmBalancesTokens.length) {
+    const _nativeTokens = collectEvmNativeTokens(tokens);
+    if (!_evmBalancesTokens.length && !_nativeTokens.length) {
       csl("useEvmBalances", "yellow-600", "no Rhea EVM tokens cached yet");
       return;
     }
@@ -211,53 +276,70 @@ export default function useEvmBalances(enabled = false) {
 
     try {
       setLoading(true);
-      try {
-        const res = await axios.post(
-          `${DB3_API_URL}/balance/tokens`,
-          {
-            address: requestAccount,
-            tokens: _evmBalancesTokens,
-          },
-          { signal: abortController.signal }
-        );
+      if (_evmBalancesTokens.length > 0) {
+        try {
+          const res = await axios.post(
+            `${DB3_API_URL}/balance/tokens`,
+            {
+              address: requestAccount,
+              tokens: _evmBalancesTokens,
+            },
+            { signal: abortController.signal }
+          );
+
+          if (isRequestStale()) return;
+          apiData = res.data?.data || {};
+          applyApiBalances(apiData, _evmBalancesTokens, tokens, next);
+        } catch (error: any) {
+          if (error?.name === "CanceledError" || error?.code === "ERR_CANCELED") return;
+          csl("useEvmBalances", "red-500", "api failed, fallback to rpc: %o", error);
+          apiData = {};
+        }
 
         if (isRequestStale()) return;
-        apiData = res.data?.data || {};
-        applyApiBalances(apiData, _evmBalancesTokens, tokens, next);
-      } catch (error: any) {
-        if (error?.name === "CanceledError" || error?.code === "ERR_CANCELED") return;
-        csl("useEvmBalances", "red-500", "api failed, fallback to rpc: %o", error);
-        apiData = {};
+
+        const missingChainIds = _evmBalancesTokens
+          .map((token) =>
+            Object.keys(apiData).includes(String(token.chain_id)) ? null : token.chain_id
+          )
+          .filter((id): id is number => id != null);
+
+        const rpcChainIds =
+          missingChainIds.length > 0
+            ? missingChainIds
+            : Object.keys(apiData).length === 0
+              ? _evmBalancesTokens.map((t) => t.chain_id)
+              : [];
+
+        if (rpcChainIds.length > 0) {
+          csl("useEvmBalances", "pink-700", "rpc fallback chainIds: %o", rpcChainIds);
+          try {
+            const rpcData = await fetchBalancesViaRpc(
+              requestAccount,
+              rpcChainIds,
+              _evmBalancesTokens,
+              isRequestStale
+            );
+            if (isRequestStale()) return;
+            applyApiBalances(rpcData, _evmBalancesTokens, tokens, next);
+          } catch (error) {
+            csl("useEvmBalances", "red-500", "rpc fallback failed: %o", error);
+          }
+        }
       }
 
-      if (isRequestStale()) return;
-
-      const missingChainIds = _evmBalancesTokens
-        .map((token) =>
-          Object.keys(apiData).includes(String(token.chain_id)) ? null : token.chain_id
-        )
-        .filter((id): id is number => id != null);
-
-      const rpcChainIds =
-        missingChainIds.length > 0
-          ? missingChainIds
-          : Object.keys(apiData).length === 0
-            ? _evmBalancesTokens.map((t) => t.chain_id)
-            : [];
-
-      if (rpcChainIds.length > 0) {
-        csl("useEvmBalances", "pink-700", "rpc fallback chainIds: %o", rpcChainIds);
+      if (_nativeTokens.length > 0 && !isRequestStale()) {
+        csl("useEvmBalances", "pink-700", "native rpc for %o tokens", _nativeTokens.length);
         try {
-          const rpcData = await fetchBalancesViaRpc(
+          const nativeData = await fetchNativeBalancesViaRpc(
             requestAccount,
-            rpcChainIds,
-            _evmBalancesTokens,
+            _nativeTokens,
             isRequestStale
           );
           if (isRequestStale()) return;
-          applyApiBalances(rpcData, _evmBalancesTokens, tokens, next);
+          applyApiBalances(nativeData, _evmBalancesTokens, tokens, next);
         } catch (error) {
-          csl("useEvmBalances", "red-500", "rpc fallback failed: %o", error);
+          csl("useEvmBalances", "red-500", "native rpc failed: %o", error);
         }
       }
 

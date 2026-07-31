@@ -145,7 +145,7 @@ function resolveTokenAlias(token: TokenChain): string {
   );
 }
 
-function isRheaNativeToken(token: TokenChain, nativeId: string): boolean {
+export function isRheaNativeToken(token: TokenChain, nativeId: string): boolean {
   const addr = (token.contractAddress || "").toLowerCase();
   const asset = (token.assetId || "").toLowerCase();
   const native = nativeId.toLowerCase();
@@ -160,6 +160,15 @@ function isRheaNativeToken(token: TokenChain, nativeId: string): boolean {
   // Lending often fills contractAddress with assetId for natives
   if (!token.contractAddress || token.contractAddress === token.assetId) return true;
   return false;
+}
+
+/** True when token is the EVM chain native gas token (may use nep141/nep245 as contractAddress). */
+export function isEvmNativeBalanceToken(token: TokenChain): boolean {
+  if (token.chainType !== "evm" || token.chainId == null) return false;
+  const alias = resolveTokenAlias(token);
+  const nativeId = alias ? RHEA_NATIVE_TOKEN_IDS[alias] : undefined;
+  if (!nativeId) return false;
+  return isRheaNativeToken(token, nativeId);
 }
 
 /** On-chain token ID for Rhea quote/swap/report. Natives use RHEA_NATIVE_TOKEN_IDS. */
