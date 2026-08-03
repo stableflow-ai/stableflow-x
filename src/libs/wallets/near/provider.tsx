@@ -17,6 +17,7 @@ import { setupWalletConnect } from "rhea-wallet-connect";
 import useWalletsStore from "@/stores/use-wallets";
 
 import "@near-wallet-selector/modal-ui/styles.css";
+import "./styles.css";
 import NearWallet from "./wallet";
 import useBalancesStore from "@/stores/use-balances";
 import { getStableflowLogo } from "@/utils/format/logo";
