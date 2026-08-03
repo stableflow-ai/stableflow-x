@@ -4,7 +4,7 @@ import useWalletsStore, { type WalletType } from "@/stores/use-wallets";
 import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
 import chains, { chainTypes, type TokenChain, RHEA_WALLET_TYPES } from "@/config/chains";
 import { formatNumber } from "@/utils/format/number";
-import { getCachedRheaTokens } from "@/services/rhea/tokens";
+import useRheaTokensStore from "@/stores/use-rhea-tokens";
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import Big from "big.js";
@@ -64,12 +64,16 @@ type HoldingRow = {
   address: string;
 };
 
-function buildHoldings(type: string, balancesBag: any): HoldingRow[] {
-  const tokens = getCachedRheaTokens().filter((t) => t.chainType === type);
+function buildHoldings(
+  type: string,
+  balancesBag: any,
+  tokens: TokenChain[]
+): HoldingRow[] {
+  const list = tokens.filter((t) => t.chainType === type);
   const bag = balancesBag || {};
   const rows: HoldingRow[] = [];
 
-  for (const token of tokens) {
+  for (const token of list) {
     const chainKey = String(token.chainId ?? token.blockchain);
     const amount =
       bag[chainKey]?.[token.contractAddress] ||
@@ -93,8 +97,7 @@ function buildHoldings(type: string, balancesBag: any): HoldingRow[] {
   return rows.sort((a, b) => b.usd - a.usd);
 }
 
-function findTokenChain(row: HoldingRow): TokenChain | null {
-  const tokens = getCachedRheaTokens();
+function findTokenChain(row: HoldingRow, tokens: TokenChain[]): TokenChain | null {
   return (
     tokens.find(
       (t) =>
@@ -109,6 +112,7 @@ export default function Wallet() {
   const walletStore = useWalletStore();
   const walletsStore = useWalletsStore();
   const balancesStore = useBalancesStore();
+  const rheaTokens = useRheaTokensStore((s) => s.tokens);
   const isMobile = useIsMobile();
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -160,10 +164,11 @@ export default function Wallet() {
     const map: Record<string, HoldingRow[]> = {};
     for (const type of RHEA_WALLET_TYPES) {
       const key = `${type}Balances` as keyof BalancesState;
-      map[type] = buildHoldings(type, balancesStore[key]);
+      map[type] = buildHoldings(type, balancesStore[key], rheaTokens);
     }
     return map;
   }, [
+    rheaTokens,
     balancesStore.evmBalances,
     balancesStore.solBalances,
     balancesStore.nearBalances,
@@ -186,7 +191,7 @@ export default function Wallet() {
   }, [holdingsByType, balancesStore]);
 
   const onSelectHolding = (row: HoldingRow) => {
-    const token = findTokenChain(row);
+    const token = findTokenChain(row, rheaTokens);
     if (!token) return;
 
     const toToken = walletStore.toToken;

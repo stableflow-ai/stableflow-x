@@ -1,6 +1,5 @@
 import { BASE_API_URL } from "@/config/api";
 import chains from "@/config/chains";
-import { stablecoinLogoMap } from "@/config/tokens";
 import { TradeStatus } from "@/config/trade";
 import { useHistoryStore } from "@/stores/use-history";
 import { formatAddress } from "@/utils/format/address";
@@ -13,6 +12,7 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import Loading from "@/components/loading/icon";
+import TokenIcon from "@/components/token-icon";
 
 const PendingTransfer = (props: any) => {
   const { className } = props;
@@ -58,9 +58,6 @@ const PendingTransfer = (props: any) => {
       if (!result || result.status === TradeStatus.Continue) {
         return;
       }
-
-      result.token_icon = stablecoinLogoMap[result.symbol];
-      result.to_token_icon = stablecoinLogoMap[result.to_symbol];
 
       const currentFromChain = Object.values(chains).find((chain) => chain.blockchain === result.from_chain) ?? {};
       const currentToChain = Object.values(chains).find((chain) => chain.blockchain === result.to_chain) ?? {};
@@ -249,10 +246,11 @@ const PendingItem = (props: any) => {
       </div>
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-[7px]">
-          <img
-            src={data.token_icon}
-            alt=""
-            className="w-[28px] h-[28px] rounded-full object-center object-contain shrink-0"
+          <TokenIcon
+            symbol={data.symbol}
+            blockchain={data.from_chain}
+            containerClassName="w-[28px] h-[28px] rounded-full shrink-0 overflow-hidden"
+            className="object-center object-contain"
           />
           <div className="flex items-center gap-[5px]">
             <div className="text-black text-[16px] font-[700] leading-[100%]">

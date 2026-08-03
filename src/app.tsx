@@ -8,6 +8,7 @@ import WalletsProvider from "./libs/wallets/providers";
 import Layout from "./layouts";
 import { lazy, Suspense } from "react";
 import { useEvmGasFees } from "./hooks/use-evm-gas-fees";
+import { useRheaTokens } from "./hooks/use-rhea-tokens";
 import { useTradeReport } from "./hooks/use-trade-report";
 import ZendeskPrivider from "./components/zendesk-widget";
 
@@ -79,6 +80,7 @@ const router = createBrowserRouter([
 
 function App() {
   useEvmGasFees();
+  useRheaTokens();
   useTradeReport();
   return (
     <WalletsProvider>

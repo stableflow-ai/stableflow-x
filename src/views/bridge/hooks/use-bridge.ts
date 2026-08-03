@@ -23,7 +23,7 @@ import { csl } from "@/utils/log";
 import { addTradeReport } from "@/stores/use-trade-report";
 import { formatBridgeError, formatRheaQuoteErrorMessage, isReQuoteError, isUserRejectedError, sortQuoteData } from "../utils";
 import { useTrack } from "@/hooks/use-track";
-import { tokenAddressForQuote, tokenHttpChainId, fetchRheaTokens } from "@/services/rhea/tokens";
+import { tokenAddressForQuote, tokenHttpChainId } from "@/services/rhea/tokens";
 import { executeRheaTx } from "@/libs/wallets/execute-rhea-tx";
 import { rheaReport, pollRheaOrderStatus } from "@/services/rhea/status";
 import { ZCASH_MANUAL_WALLET_NAME } from "@/libs/wallets/zcash/wallet";
@@ -60,7 +60,6 @@ export default function useBridge(_props?: any) {
   const toast = useToast();
   const { addQuote: addQuoteTrack, addTransfer: addTransferTrack } = useTrack();
   const requestIdRef = useRef(0);
-  const tokensLoadedRef = useRef(false);
 
   const [fromWalletAddress, toWalletAddress] = useMemo(() => {
     const _fromChainType: WalletType = walletStore.fromToken?.chainType;
@@ -78,15 +77,6 @@ export default function useBridge(_props?: any) {
   const [addressValidation, setAddressValidation] =
     useState<AddressValidationResult>({ isValid: false });
   const [amountError, setAmountError] = useState<string>("");
-
-  useEffect(() => {
-    if (tokensLoadedRef.current) return;
-    tokensLoadedRef.current = true;
-    fetchRheaTokens().catch((err) => {
-      csl("useBridge", "red-500", "failed to load Rhea tokens: %o", err);
-      tokensLoadedRef.current = false;
-    });
-  }, []);
 
   const selectedQuote: RheaNormalizedQuote | null = useMemo(() => {
     const key = bridgeStore.quoteDataService;

@@ -1,8 +1,6 @@
 import { BASE_API_URL } from "@/config/api";
 import chains from "@/config/chains";
-import { stablecoinLogoMap } from "@/config/tokens";
 import { TradeProject, TradeProjectMap } from "@/config/trade";
-import { Service } from "@/services/constants";
 import { useHistoryStore } from "@/stores/use-history";
 import useWalletsStore from "@/stores/use-wallets";
 import { useDebounceFn, useRequest } from "ahooks";
@@ -77,9 +75,6 @@ export function usePendingHistory(options?: UsePendingHistoryOptions | any) {
 
       const _list = response.data.data.data;
       _list.forEach((item: any) => {
-        item.token_icon = stablecoinLogoMap[item.symbol];
-        item.to_token_icon = stablecoinLogoMap[item.to_symbol];
-
         const currentFromChain = Object.values(chains).find((chain) => chain.blockchain === item.from_chain);
         const currentToChain = Object.values(chains).find((chain) => chain.blockchain === item.to_chain);
 

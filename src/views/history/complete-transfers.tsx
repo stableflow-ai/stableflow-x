@@ -4,6 +4,7 @@ import clsx from "clsx";
 import useIsMobile from "@/hooks/use-is-mobile";
 import Pagination from "@/components/pagination";
 import Loading from "@/components/loading/icon";
+import TokenIcon from "@/components/token-icon";
 import { TradeStatus, TradeStatusMap } from "@/config/trade";
 import ContinueTransfer from "./continue";
 
@@ -54,10 +55,11 @@ const CompleteTransferItem = ({ data, isMobile, reload }: any) => {
   return (
     <div className="flex items-center justify-between border-b border-[#EBF0F8] py-[10px] gap-[10px] min-w-[350px]">
       <div className="flex items-center gap-[10px] shrink-0">
-        <img
-          src={data.token_icon}
-          alt=""
-          className="md:w-[28px] md:h-[28px] w-[20px] h-[20px]"
+        <TokenIcon
+          symbol={data.symbol}
+          blockchain={data.from_chain}
+          containerClassName="md:w-[28px] md:h-[28px] w-[20px] h-[20px] shrink-0"
+          className="object-center object-contain"
         />
         <span>
           <span className="text-[14px] md:text-[16px] font-bold">
@@ -69,12 +71,13 @@ const CompleteTransferItem = ({ data, isMobile, reload }: any) => {
         </span>
       </div>
       <div className="flex items-center gap-[10px] shrink-0">
-        <div
-          className="md:w-[26px] md:h-[26px] w-[20px] h-[20px] relative bg-no-repeat bg-center bg-contain"
-          style={{
-            backgroundImage: `url(${data.token_icon})`,
-          }}
-        >
+        <div className="md:w-[26px] md:h-[26px] w-[20px] h-[20px] relative shrink-0">
+          <TokenIcon
+            symbol={data.symbol}
+            blockchain={data.from_chain}
+            containerClassName="w-full h-full"
+            className="object-center object-contain"
+          />
           <img
             src={data.source_chain?.chainIcon}
             alt=""
@@ -110,12 +113,13 @@ const CompleteTransferItem = ({ data, isMobile, reload }: any) => {
             strokeLinejoin="round"
           />
         </svg>
-        <div
-          className="md:w-[26px] md:h-[26px] w-[20px] h-[20px] relative bg-no-repeat bg-center bg-contain"
-          style={{
-            backgroundImage: `url(${data.to_token_icon})`,
-          }}
-        >
+        <div className="md:w-[26px] md:h-[26px] w-[20px] h-[20px] relative shrink-0">
+          <TokenIcon
+            symbol={data.to_symbol}
+            blockchain={data.to_chain}
+            containerClassName="w-full h-full"
+            className="object-center object-contain"
+          />
           <img
             src={data.destination_chain?.chainIcon}
             alt=""

@@ -9,10 +9,8 @@ import chains, {
   aliasToHttpChainId,
 } from "@/config/chains";
 import { Service } from "@/services/constants";
+import useRheaTokensStore from "@/stores/use-rhea-tokens";
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-let cache: { tokens: TokenChain[]; fetchedAt: number } | null = null;
 let inflight: Promise<TokenChain[]> | null = null;
 
 /**
@@ -82,10 +80,13 @@ export const mapLendingTokenToTokenChain = (item: RheaLendingToken): TokenChain 
 };
 
 export async function fetchRheaTokens(force = false): Promise<TokenChain[]> {
-  if (!force && cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
-    return cache.tokens;
+  const store = useRheaTokensStore.getState();
+  if (!force && store.tokens.length) {
+    return store.tokens;
   }
   if (inflight) return inflight;
+
+  store.set({ loading: true });
 
   inflight = (async () => {
     // Request only locally enabled chains; response is filtered again by allowlist.
@@ -96,11 +97,17 @@ export async function fetchRheaTokens(force = false): Promise<TokenChain[]> {
       .map(mapLendingTokenToTokenChain)
       .filter((t): t is TokenChain => !!t);
 
-    cache = { tokens, fetchedAt: Date.now() };
+    const fetchedAt = Date.now();
+    useRheaTokensStore.getState().set({
+      tokens,
+      fetchedAt,
+      loading: false,
+    });
     inflight = null;
     return tokens;
   })().catch((err) => {
     inflight = null;
+    useRheaTokensStore.getState().set({ loading: false });
     throw err;
   });
 
@@ -108,7 +115,22 @@ export async function fetchRheaTokens(force = false): Promise<TokenChain[]> {
 }
 
 export function getCachedRheaTokens(): TokenChain[] {
-  return cache?.tokens ?? [];
+  return useRheaTokensStore.getState().tokens ?? [];
+}
+
+/** Resolve token icon by symbol + blockchain (exact match). */
+export function findRheaTokenIcon(
+  symbol?: string,
+  blockchain?: string
+): string | undefined {
+  if (!symbol) return undefined;
+  const tokens = getCachedRheaTokens();
+  const found = tokens.find(
+    (t) =>
+      t.symbol === symbol &&
+      (!blockchain || t.blockchain === blockchain)
+  );
+  return found?.icon;
 }
 
 /** Native gas token USD price from Rhea lending tokens cache. */

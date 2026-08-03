@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { useHistoryStore } from "@/stores/use-history";
 import { getRouterDisplayName, getRouterLogo } from "@/services/constants";
 import { getStableflowIcon } from "@/utils/format/logo";
+import TokenIcon from "@/components/token-icon";
 
 export default function Pending(props: any) {
   const { className, isTitle = true, contentClassName, history } = props;
@@ -79,10 +80,11 @@ const PendingItem = ({ className, data }: any) => {
           )}
         </div>
         <div className="flex items-center gap-[10px]">
-          <img
-            src={data.token_icon}
-            alt=""
-            className="w-[28px] h-[28px]"
+          <TokenIcon
+            symbol={data.symbol}
+            blockchain={data.from_chain}
+            containerClassName="w-[28px] h-[28px] shrink-0"
+            className="object-center object-contain"
           />
           <span>
             <span className="text-[16px] font-bold">
@@ -97,10 +99,11 @@ const PendingItem = ({ className, data }: any) => {
             alt=""
             className="w-[5px] h-[8px] object-center object-contain shrink-0"
           />
-          <img
-            src={data.to_token_icon}
-            alt=""
-            className="w-[28px] h-[28px]"
+          <TokenIcon
+            symbol={data.to_symbol}
+            blockchain={data.to_chain}
+            containerClassName="w-[28px] h-[28px] shrink-0"
+            className="object-center object-contain"
           />
           <span>
             <span className="text-[16px] font-bold">
@@ -125,10 +128,6 @@ const PendingItem = ({ className, data }: any) => {
           <ChainAndAddress
             data={data.source_chain}
             address={data.address}
-            token={{
-              symbol: data.symbol,
-              icon: data.token_icon,
-            }}
           />
           <img
             src={getStableflowIcon("icon-arrow-right.svg")}
@@ -138,10 +137,6 @@ const PendingItem = ({ className, data }: any) => {
           <ChainAndAddress
             data={data.destination_chain}
             address={data.receive_address}
-            token={{
-              symbol: data.to_symbol,
-              icon: data.to_token_icon,
-            }}
           />
         </div>
       </div>
@@ -152,7 +147,7 @@ const PendingItem = ({ className, data }: any) => {
   );
 };
 
-const ChainAndAddress = ({ className, data, address, token }: any) => {
+const ChainAndAddress = ({ className, data, address }: any) => {
   return (
     <div className={clsx("flex items-center gap-[6px]", className)}>
       <div

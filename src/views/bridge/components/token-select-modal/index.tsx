@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import ReactDOM from "react-dom";
 import useWalletStore from "@/stores/use-wallet";
 import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
-import { fetchRheaTokens, getCachedRheaTokens } from "@/services/rhea/tokens";
+import useRheaTokensStore from "@/stores/use-rhea-tokens";
 import chains, { type ChainType, type TokenChain } from "@/config/chains";
 import useIsMobile from "@/hooks/use-is-mobile";
 import Drawer from "@/components/drawer";
@@ -81,11 +81,11 @@ function MobileTokenTitle({
 export default function TokenSelectModal() {
   const walletStore = useWalletStore();
   const balancesStore = useBalancesStore();
+  const tokens = useRheaTokensStore((s) => s.tokens);
+  const loading = useRheaTokensStore((s) => s.loading && !s.tokens.length);
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [chainFilter, setChainFilter] = useState<string>("evm");
-  const [tokens, setTokens] = useState<TokenChain[]>(getCachedRheaTokens());
-  const [loading, setLoading] = useState(false);
   const [mobileStep, setMobileStep] = useState<"chain" | "token">("chain");
 
   useEffect(() => {
@@ -93,17 +93,6 @@ export default function TokenSelectModal() {
     setSearch("");
     setChainFilter("evm");
     setMobileStep("chain");
-    const cached = getCachedRheaTokens();
-    if (cached.length) {
-      setTokens(cached);
-      setLoading(false);
-    } else {
-      setLoading(true);
-    }
-    fetchRheaTokens()
-      .then((list) => setTokens(list))
-      .catch(() => {})
-      .finally(() => setLoading(false));
   }, [walletStore.showTokenSelect]);
 
   const getBalance = (token: TokenChain) => {

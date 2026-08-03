@@ -1,6 +1,5 @@
 import { BASE_API_URL } from "@/config/api";
 import chains from "@/config/chains";
-import { stablecoinLogoMap } from "@/config/tokens";
 import useWalletsStore from "@/stores/use-wallets";
 import { useDebounceFn, useRequest } from "ahooks";
 import axios from "axios";
@@ -50,9 +49,6 @@ export function useHistory() {
 
       const _list = response.data.data.data;
       _list.forEach((item: any) => {
-        item.token_icon = stablecoinLogoMap[item.symbol];
-        item.to_token_icon = stablecoinLogoMap[item.to_symbol];
-
         const currentFromChain = Object.values(chains).find((chain) => chain.blockchain === item.from_chain);
         const currentToChain = Object.values(chains).find((chain) => chain.blockchain === item.to_chain);
 
