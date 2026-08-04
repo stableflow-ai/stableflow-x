@@ -304,73 +304,80 @@ export default function useBridge(_props?: any) {
   };
 
   const onTransfer = async () => {
-    const fromToken = walletStore.fromToken;
-    const toToken = walletStore.toToken;
-    if (!fromToken || !toToken || !selectedQuote) {
-      toast.fail({ title: "No route selected" });
-      return;
-    }
-
-    const fromChainType: WalletType = fromToken.chainType;
-    const walletEntry = getWalletForChain(fromChainType);
-    if (!walletEntry?.account || !walletEntry?.wallet) {
-      toast.fail({ title: "Connect wallet first" });
-      return;
-    }
-
-    if (fromChainType === "evm" && fromToken.chainId && evmAccount.chainId !== fromToken.chainId) {
-      try {
-        await switchChainAsync({ chainId: fromToken.chainId });
-      } catch {
-        setErrorChain(fromToken.chainId);
-        toast.fail({ title: "Please switch network" });
-        return;
-      }
-    }
-
-    if (priceImpact > PRICE_IMPACT_THRESHOLD * 100 && !bridgeStore.acceptPriceImpact) {
-      toast.fail({ title: "Please accept price impact" });
-      return;
-    }
-
-    const balanceResult = await getBalance();
-    if (balanceResult.error) {
-      toast.fail({ title: balanceResult.error || "Failed to fetch balance" });
-      return;
-    }
-    if (Big(balanceResult.amount || 0).lt(bridgeStore.amount || 0)) {
-      toast.fail({ title: "Insufficient balance" });
-      return;
-    }
+    const addTrackParams: {
+      type: "transfer_button";
+      service: Service;
+      quoteData?: any;
+      errMsg?: string;
+      sourceErrMsg?: string;
+      txHash?: string;
+    } = {
+      type: "transfer_button",
+      service: Service.Rhea,
+      quoteData: selectedQuote,
+    };
 
     bridgeStore.set({ transferring: true, errorTips: "", depositInfo: null });
 
-    const sender = walletEntry.account;
-    const recipient = bridgeStore.recipientAddress || toWalletAddress || "";
-    const amountWei = toBaseUnits(bridgeStore.amount, fromToken.decimals);
-
-    const reportBase: Record<string, any> = {
-      project: ServiceBackend[Service.Rhea],
-      route: ServiceBackend[Service.Rhea],
-      address: sender,
-      amount: bridgeStore.amount,
-      out_amount: outputAmount,
-      deposit_address: "",
-      receive_address: recipient,
-      from_chain: fromToken.blockchain,
-      symbol: fromToken.symbol,
-      to_chain: toToken.blockchain,
-      to_symbol: toToken.symbol,
-      tx_hash: "",
-      volume: Number(
-        Big(amountWei).div(Big(10).pow(fromToken.decimals)).times(fromToken.price || 0)
-      ),
-    };
-    if (fromChainType === "evm" && fromToken.chainId != null) {
-      reportBase.chain_id = fromToken.chainId;
-    }
-
     try {
+      const fromToken = walletStore.fromToken;
+      const toToken = walletStore.toToken;
+      if (!fromToken || !toToken || !selectedQuote) {
+        throw new Error("No route selected");
+      }
+
+      const fromChainType: WalletType = fromToken.chainType;
+      const walletEntry = getWalletForChain(fromChainType);
+      if (!walletEntry?.account || !walletEntry?.wallet) {
+        throw new Error("Connect wallet first");
+      }
+
+      if (fromChainType === "evm" && fromToken.chainId && evmAccount.chainId !== fromToken.chainId) {
+        try {
+          await switchChainAsync({ chainId: fromToken.chainId });
+        } catch {
+          setErrorChain(fromToken.chainId);
+          throw new Error("Please switch network");
+        }
+      }
+
+      if (priceImpact > PRICE_IMPACT_THRESHOLD * 100 && !bridgeStore.acceptPriceImpact) {
+        throw new Error("Please accept price impact");
+      }
+
+      const balanceResult = await getBalance();
+      if (balanceResult.error) {
+        throw new Error(balanceResult.error || "Failed to fetch balance");
+      }
+      if (Big(balanceResult.amount || 0).lt(bridgeStore.amount || 0)) {
+        throw new Error("Insufficient balance");
+      }
+
+      const sender = walletEntry.account;
+      const recipient = bridgeStore.recipientAddress || toWalletAddress || "";
+      const amountWei = toBaseUnits(bridgeStore.amount, fromToken.decimals);
+
+      const reportBase: Record<string, any> = {
+        project: ServiceBackend[Service.Rhea],
+        route: ServiceBackend[Service.Rhea],
+        address: sender,
+        amount: bridgeStore.amount,
+        out_amount: outputAmount,
+        deposit_address: "",
+        receive_address: recipient,
+        from_chain: fromToken.blockchain,
+        symbol: fromToken.symbol,
+        to_chain: toToken.blockchain,
+        to_symbol: toToken.symbol,
+        tx_hash: "",
+        volume: Number(
+          Big(amountWei).div(Big(10).pow(fromToken.decimals)).times(fromToken.price || 0)
+        ),
+      };
+      if (fromChainType === "evm" && fromToken.chainId != null) {
+        reportBase.chain_id = fromToken.chainId;
+      }
+
       const swap = await rheaService.swap(
         {
           fromChain: tokenHttpChainId(fromToken),
@@ -465,9 +472,7 @@ export default function useBridge(_props?: any) {
         historyStore.updateStatus(hash, "PENDING_DEPOSIT");
         getPendingList();
         addTransferTrack({
-          type: "transfer_button",
-          service: Service.Rhea,
-          quoteData: selectedQuote,
+          ...addTrackParams,
           txHash: hash,
         });
 
@@ -551,9 +556,7 @@ export default function useBridge(_props?: any) {
       }
       getPendingList();
       addTransferTrack({
-        type: "transfer_button",
-        service: Service.Rhea,
-        quoteData: selectedQuote,
+        ...addTrackParams,
         txHash,
       });
 
@@ -594,6 +597,9 @@ export default function useBridge(_props?: any) {
     } catch (error: any) {
       csl("useBridge", "red-500", "transfer failed: %o", error);
       const message = formatBridgeError(error, "Transfer failed");
+      addTrackParams.sourceErrMsg = error?.message || error?.toString?.() || "Transfer failed";
+      addTrackParams.errMsg = message;
+      addTransferTrack(addTrackParams);
       toast.fail({ title: message });
       bridgeStore.set({ transferring: false, errorTips: "" });
 
