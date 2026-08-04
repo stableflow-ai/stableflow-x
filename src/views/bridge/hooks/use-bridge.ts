@@ -333,6 +333,16 @@ export default function useBridge(_props?: any) {
       return;
     }
 
+    const balanceResult = await getBalance();
+    if (balanceResult.error) {
+      toast.fail({ title: balanceResult.error || "Failed to fetch balance" });
+      return;
+    }
+    if (Big(balanceResult.amount || 0).lt(bridgeStore.amount || 0)) {
+      toast.fail({ title: "Insufficient balance" });
+      return;
+    }
+
     bridgeStore.set({ transferring: true, errorTips: "", depositInfo: null });
 
     const sender = walletEntry.account;
