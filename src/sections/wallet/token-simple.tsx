@@ -1,4 +1,5 @@
 import Amount from "@/components/amount";
+import TokenIcon from "@/components/token-icon";
 import Loading from "@/components/loading/icon";
 import useTokenBalance from "@/hooks/use-token-balance";
 import useBalancesStore, { type BalancesState } from "@/stores/use-balances";
@@ -44,7 +45,12 @@ export default function TokenSimple({ token, isDisabled }: any) {
       }}
     >
       <div className="flex items-center gap-[8px]">
-        <img className="w-[24px] h-[24px] rounded-full" src={token.icon} />
+        <TokenIcon
+          src={token.icon}
+          symbol={token.symbol}
+          blockchain={token.blockchain}
+          containerClassName="w-[24px] h-[24px]"
+        />
         <span className="text-[14px] font-[500]">{token.symbol}</span>
       </div>
       {loading ? (

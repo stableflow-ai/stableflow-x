@@ -17,6 +17,8 @@ const DEFAULT_GAS_PRICE_WEI = 20n * 10n ** 9n; // 20 gwei
 export type FeeContext = {
   fromToken?: TokenChain | null;
   toToken?: TokenChain | null;
+  /** Quote request amountIn (smallest units); fallback when quote lacks amountIn */
+  amountIn?: string;
 };
 
 const asString = (v: unknown, fallback = ""): string => {
@@ -46,7 +48,7 @@ const resolveAlias = (token?: TokenChain | null, chainHint?: string | number): s
   return getRheaChainByAlias(hint)?.alias || hint;
 };
 
-const resolveTokenUsdPrice = (opts: {
+export const resolveTokenUsdPrice = (opts: {
   address?: string | null;
   alias?: string;
   symbol?: string;
@@ -245,31 +247,95 @@ const buildGasEstimateFees = (
 };
 
 /**
+ * appFees fee is bps (100 = 1%). Merge all entries into one Bridge Fee row.
+ */
+const buildAppFeesItems = (q: RheaQuoteRaw, ctx: FeeContext): RheaFeeItem[] => {
+  const appFees = q.appFees;
+  if (!Array.isArray(appFees) || appFees.length === 0) return [];
+
+  const from = ctx.fromToken;
+  if (!from) return [];
+
+  const amountIn = parsePositiveIntString(q.amountIn) || parsePositiveIntString(ctx.amountIn);
+  if (!amountIn) return [];
+
+  let totalBps = Big(0);
+  for (const item of appFees) {
+    const fee = (item as { fee?: unknown })?.fee;
+    if (fee == null || asString(fee, "").trim() === "") continue;
+    try {
+      const bps = Big(asString(fee));
+      if (bps.gt(0)) totalBps = totalBps.plus(bps);
+    } catch {
+      // skip invalid entry
+    }
+  }
+  if (totalBps.lte(0)) return [];
+
+  try {
+    const amount = Big(amountIn).times(totalBps).div(10000).round(0, Big.roundDown).toFixed(0);
+    if (BigInt(amount) <= 0n) return [];
+
+    const alias = resolveAlias(from);
+    const usdPrice = resolveTokenUsdPrice({
+      address: from.contractAddress || from.assetId,
+      alias,
+      symbol: from.symbol,
+      fallback: from.price,
+    });
+
+    return [
+      {
+        name: "Bridge Fee",
+        amount,
+        expenseType: "FROM_SOURCE_WALLET",
+        token: {
+          address: from.contractAddress || from.assetId,
+          symbol: from.symbol,
+          decimals: from.decimals,
+          chainId: from.chainId,
+          usdPrice: usdPrice > 0 ? usdPrice : undefined,
+        },
+      },
+    ];
+  } catch {
+    return [];
+  }
+};
+
+/**
  * Resolve fee items for a quote. Prefer API fee[]; otherwise synthesize from router-specific fields.
- * Extend this function when the API adds new fee sources.
+ * Always append Bridge Fee from response appFees when present.
  */
 export function resolveQuoteFees(q: RheaQuoteRaw, ctx: FeeContext = {}): RheaFeeItem[] {
+  let fees: RheaFeeItem[] = [];
+
   const existing = q.fee;
   if (Array.isArray(existing) && existing.length > 0) {
-    return existing as RheaFeeItem[];
+    fees = existing as RheaFeeItem[];
+  } else {
+    const router = asString(q.router, "").toLowerCase();
+
+    if (router === "paraswap") {
+      fees = buildParaswapFees(q, ctx);
+    } else if (router === "cow") {
+      fees = buildCowFees(q, ctx);
+    } else {
+      // bitget / binance: no gasEstimate in quote — heuristic Network Fee (skip nearintents)
+      const heuristicUnits = HEURISTIC_EVM_FEE_ROUTERS.has(router)
+        ? DEFAULT_EVM_AGGREGATOR_GAS_UNITS
+        : null;
+
+      // Generic: gasEstimate / gas units → Network Fee; optional router heuristic fallback
+      fees = buildGasEstimateFees(q, ctx, heuristicUnits);
+    }
   }
 
-  const router = asString(q.router, "").toLowerCase();
-
-  if (router === "paraswap") {
-    return buildParaswapFees(q, ctx);
+  const appFeeItems = buildAppFeesItems(q, ctx);
+  if (appFeeItems.length > 0) {
+    fees = [...fees, ...appFeeItems];
   }
-  if (router === "cow") {
-    return buildCowFees(q, ctx);
-  }
-
-  // bitget / binance: no gasEstimate in quote — heuristic Network Fee (skip nearintents)
-  const heuristicUnits = HEURISTIC_EVM_FEE_ROUTERS.has(router)
-    ? DEFAULT_EVM_AGGREGATOR_GAS_UNITS
-    : null;
-
-  // Generic: gasEstimate / gas units → Network Fee; optional router heuristic fallback
-  return buildGasEstimateFees(q, ctx, heuristicUnits);
+  return fees;
 }
 
 export function formatFeeItems(fees: RheaFeeItem[]): {

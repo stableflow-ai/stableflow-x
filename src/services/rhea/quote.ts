@@ -1,7 +1,12 @@
 import Big from "big.js";
 import { rheaSwapApi } from "./client";
 import { buildAppFees } from "./config";
-import { formatFeeItems, resolveQuoteFees, type FeeContext } from "./fee";
+import {
+  formatFeeItems,
+  resolveQuoteFees,
+  resolveTokenUsdPrice,
+  type FeeContext,
+} from "./fee";
 import type {
   RheaNormalizedQuote,
   RheaQuoteRaw,
@@ -16,6 +21,12 @@ const asString = (v: unknown, fallback = "0"): string => {
   return String(v);
 };
 
+const isPresent = (v: unknown): boolean => {
+  if (v == null) return false;
+  const s = String(v).trim();
+  return s !== "";
+};
+
 const pickOut = (q: RheaQuoteRaw): string => {
   return asString(q.estimatedOut ?? q.amountOut ?? q.estimatedOutSmallest ?? "0");
 };
@@ -24,38 +35,88 @@ const pickMinOut = (q: RheaQuoteRaw): string => {
   return asString(q.minAmountOut ?? pickOut(q));
 };
 
+/** Parse top-level priceImpact like "-0.04%" / "0.04" / number (already percent). */
+const parseTopLevelPriceImpactPercent = (raw: unknown): string | undefined => {
+  if (!isPresent(raw)) return undefined;
+  try {
+    const cleaned = asString(raw).trim().replace(/%/g, "");
+    if (!cleaned || cleaned === "-") return undefined;
+    return numberRemoveEndZero(Big(cleaned).toFixed(4));
+  } catch {
+    return undefined;
+  }
+};
+
+const resolveAmountUsd = (
+  amountSmallest: string | undefined,
+  token: TokenChain | null | undefined,
+  providedUsd?: unknown
+): string | undefined => {
+  if (isPresent(providedUsd)) return asString(providedUsd);
+  if (!amountSmallest || !token) return undefined;
+  try {
+    const decimals = token.decimals ?? 0;
+    const price = resolveTokenUsdPrice({
+      address: token.contractAddress || token.assetId,
+      alias: token.rheaAlias,
+      symbol: token.symbol,
+      fallback: token.price,
+    });
+    if (price <= 0) return undefined;
+    const human = Big(amountSmallest).div(Big(10).pow(decimals));
+    return human.times(price).toFixed(8);
+  } catch {
+    return undefined;
+  }
+};
+
 const pickPriceImpact = (
   q: RheaQuoteRaw,
   route: any,
-  estimatedOutUsd?: string | number,
-  router = ""
+  estimatedOutUsd: string | number | undefined,
+  ctx: FeeContext,
+  estimatedOut: string
 ): { priceImpactUsd?: string; priceImpactUsdPercent?: string } => {
-  if (route?.priceImpactUsdPercent != null || route?.priceImpactUsd != null) {
+  // 1) Top-level priceImpact (e.g. OpenOcean "-0.04%")
+  const topPercent = parseTopLevelPriceImpactPercent(q.priceImpact);
+  if (topPercent != null) {
+    return { priceImpactUsdPercent: topPercent };
+  }
+
+  // 2) raw.route priceImpactUsd* (fraction → percent)
+  if (isPresent(route?.priceImpactUsdPercent) || isPresent(route?.priceImpactUsd)) {
     let priceImpactUsdPercent: string | undefined;
-    if (route?.priceImpactUsdPercent != null) {
+    if (isPresent(route?.priceImpactUsdPercent)) {
       try {
-        priceImpactUsdPercent = numberRemoveEndZero(Big(asString(route.priceImpactUsdPercent)).times(100).toFixed(4));
+        priceImpactUsdPercent = numberRemoveEndZero(
+          Big(asString(route.priceImpactUsdPercent)).times(100).toFixed(4)
+        );
       } catch {
         priceImpactUsdPercent = asString(route.priceImpactUsdPercent);
       }
     }
     return {
-      priceImpactUsd: route?.priceImpactUsd != null ? asString(route.priceImpactUsd) : undefined,
+      priceImpactUsd: isPresent(route?.priceImpactUsd) ? asString(route.priceImpactUsd) : undefined,
       priceImpactUsdPercent,
     };
   }
 
-  const amountInUsd = q.amountInUsd;
-  if (amountInUsd == null || estimatedOutUsd == null) {
+  // 3) USD delta; derive missing legs from amount × token price
+  const amountInSmallest =
+    isPresent(q.amountIn) ? asString(q.amountIn) : ctx.amountIn;
+  const amountInUsd = resolveAmountUsd(amountInSmallest, ctx.fromToken, q.amountInUsd);
+  const outUsd = resolveAmountUsd(estimatedOut, ctx.toToken, estimatedOutUsd);
+
+  if (amountInUsd == null || outUsd == null) {
     return {};
   }
 
   try {
     const inUsd = Big(asString(amountInUsd));
     if (inUsd.eq(0)) return {};
-    const outUsd = Big(asString(estimatedOutUsd));
-    const percent = outUsd.minus(inUsd).div(inUsd).times(100);
-    const usd = outUsd.minus(inUsd);
+    const out = Big(asString(outUsd));
+    const percent = out.minus(inUsd).div(inUsd).times(100);
+    const usd = out.minus(inUsd);
     return {
       priceImpactUsd: usd.toFixed(6),
       priceImpactUsdPercent: percent.toFixed(4),
@@ -81,12 +142,12 @@ export function normalizeQuote(
   const routerName = getRouterDisplayName(router, asString(q.routerName, "") || undefined);
   const estimatedOut = pickOut(q);
   const minAmountOut = pickMinOut(q);
-  // Only priceImpact* / outputAmountUsd are read from raw.route (see plan decision)
+  // priceImpact* / outputAmountUsd may come from raw.route (rango-style)
   const route = (q.raw as any)?.route;
   const estimatedOutUsd =
     (q.estimatedOutUsd as string | number | undefined) ?? route?.outputAmountUsd;
   const { fee, totalFeeUsd } = formatFeeItems(resolveQuoteFees(q, ctx));
-  const priceImpact = pickPriceImpact(q, route, estimatedOutUsd, router);
+  const priceImpact = pickPriceImpact(q, route, estimatedOutUsd, ctx, estimatedOut);
 
   return {
     key: quoteKey(q, index),
@@ -216,6 +277,7 @@ export async function rheaQuote(params: QuoteParams) {
   const ctx: FeeContext = {
     fromToken: params.fromToken as TokenChain | undefined,
     toToken: params.toToken as TokenChain | undefined,
+    amountIn: params.amountIn,
   };
 
   return normalizeQuoteResponse(data, ctx);

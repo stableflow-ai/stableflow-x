@@ -11,6 +11,7 @@ import Big from "big.js";
 import Amount from "@/components/amount";
 import ChainTypeIcon from "@/components/chain-type-icon";
 import Skeleton from "@/components/skeleton";
+import TokenIcon from "@/components/token-icon";
 import useIsMobile from "@/hooks/use-is-mobile";
 import Address from "./address";
 
@@ -360,15 +361,17 @@ export default function Wallet() {
                           >
                             <div className="flex items-center gap-[10px]">
                               <div className="relative w-[24px] h-[24px]">
-                                <img
+                                <TokenIcon
                                   src={row.icon}
-                                  alt=""
-                                  className="w-full h-full rounded-[12px] object-cover"
+                                  symbol={row.symbol}
+                                  blockchain={row.blockchain}
+                                  containerClassName="w-full h-full"
+                                  className="object-cover"
                                 />
                                 <img
                                   src={row.chainIcon}
                                   alt=""
-                                  className="absolute -right-[2px] -bottom-[2px] w-[12px] h-[12px] rounded-[4px] border border-white"
+                                  className="absolute z-1 -right-[2px] -bottom-[2px] w-[12px] h-[12px] rounded-[4px] border border-white"
                                 />
                               </div>
                               <div>

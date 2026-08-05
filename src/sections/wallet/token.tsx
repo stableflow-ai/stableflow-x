@@ -1,4 +1,5 @@
 import Amount from "@/components/amount";
+import TokenIcon from "@/components/token-icon";
 import { motion, AnimatePresence } from "framer-motion";
 import Loading from "@/components/loading/icon";
 import CheckIcon from "./check-icon";
@@ -21,7 +22,11 @@ export default function Token({
     <div className="rounded-[12px]">
       <div className="flex items-center justify-between h-[50px] mx-[10px]">
         <div className="flex items-center gap-[8px]">
-          <img className="w-[24px] h-[24px] rounded-full" src={token.icon} />
+          <TokenIcon
+            src={token.icon}
+            symbol={token.symbol}
+            containerClassName="w-[24px] h-[24px]"
+          />
           <span className="text-[14px] font-[500]">{token.symbol}</span>
         </div>
         <div className="flex items-center gap-[4px]">

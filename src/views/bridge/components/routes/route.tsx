@@ -3,6 +3,7 @@ import useBridgeStore from "@/stores/use-bridge";
 import { formatNumber } from "@/utils/format/number";
 import { formatDuration } from "@/utils/format/time";
 import { getStableflowIcon } from "@/utils/format/logo";
+import TokenIcon from "@/components/token-icon";
 import useIsMobile from "@/hooks/use-is-mobile";
 import Big from "big.js";
 import clsx from "clsx";
@@ -98,10 +99,12 @@ const QuoteRoute = (props: any) => {
         </div>
         <div className="w-[1px] h-[14px] bg-[#B3BBCE] shrink-0" />
         <div className="flex items-center gap-[4px]">
-          <img
+          <TokenIcon
             src={data?.quoteParam?.toToken?.icon}
-            alt=""
-            className="w-[14px] h-[14px] object-center object-contain shrink-0 rounded-full"
+            symbol={data?.quoteParam?.toToken?.symbol}
+            blockchain={data?.quoteParam?.toToken?.blockchain}
+            containerClassName="w-[14px] h-[14px]"
+            className="object-center object-contain"
           />
           <div>
             {formatNumber(data.outputAmount, 2, true, {

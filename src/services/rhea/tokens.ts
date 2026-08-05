@@ -10,6 +10,7 @@ import chains, {
 } from "@/config/chains";
 import { Service } from "@/services/constants";
 import useRheaTokensStore from "@/stores/use-rhea-tokens";
+import { getStableflowTokenLogo } from "@/utils/format/logo";
 
 let inflight: Promise<TokenChain[]> | null = null;
 
@@ -53,7 +54,8 @@ export const mapLendingTokenToTokenChain = (item: RheaLendingToken): TokenChain 
     "";
 
   const decimals = Number(item.decimals ?? local.nativeToken.decimals);
-  const icon = item.icon || local.chainIcon;
+  const icon =
+    (item.icon && String(item.icon).trim()) || getStableflowTokenLogo(symbol);
 
   return {
     symbol,

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import type { TokenChain } from "@/config/chains";
 import Skeleton from "@/components/skeleton";
+import TokenIcon from "@/components/token-icon";
 import { formatNumber } from "@/utils/format/number";
 import { getStableflowIcon } from "@/utils/format/logo";
 import Big from "big.js";
@@ -125,15 +126,17 @@ export default function TokenPane({
               >
                 <div className="flex items-center gap-[10px]">
                   <div className="relative w-[32px] h-[32px]">
-                    <img
+                    <TokenIcon
                       src={token.icon}
-                      alt=""
-                      className="w-full h-full rounded-full object-cover"
+                      symbol={token.symbol}
+                      blockchain={token.blockchain}
+                      containerClassName="w-full h-full"
+                      className="object-cover"
                     />
                     <img
                       src={token.chainIcon}
                       alt=""
-                      className="absolute -right-[2px] -bottom-[2px] w-[14px] h-[14px] rounded-[4px] border border-white"
+                      className="absolute z-1 -right-[2px] -bottom-[2px] w-[14px] h-[14px] rounded-[4px] border border-white"
                     />
                   </div>
                   <div className="text-left">

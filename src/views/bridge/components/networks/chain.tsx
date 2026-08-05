@@ -7,6 +7,7 @@ import useTokenBalance from "@/hooks/use-token-balance";
 import Loading from "@/components/loading/icon";
 import Big from "big.js";
 import LazyImage from "@/components/lazy-image";
+import TokenIcon from "@/components/token-icon";
 import { getStableflowIcon } from "@/utils/format/logo";
 
 export default function Chain({ token, isTo }: any) {
@@ -45,12 +46,11 @@ export default function Chain({ token, isTo }: any) {
       onClick={openTokenSelect}
     >
       <div className="w-10 h-10 relative">
-        <LazyImage
+        <TokenIcon
           src={token?.icon}
-          containerClassName="w-full h-full rounded-full overflow-hidden"
-          fallbackSrc={(
-            <div className="w-full h-full rounded-full bg-[#EDF0F7]"></div>
-          )}
+          symbol={token?.symbol}
+          blockchain={token?.blockchain}
+          containerClassName="w-full h-full"
         />
         <LazyImage
           src={token?.chainIcon}
@@ -90,10 +90,13 @@ const WithChain = ({ token, isTo, openWallet }: any) => {
       )}
       onClick={openWallet}
     >
-      <div
-        className="relative w-11 md:w-12.5 h-11 md:h-12.5 rounded-full shrink-0 bg-no-repeat bg-center bg-cover"
-        style={{ backgroundImage: `url(${token.icon})` }}
-      >
+      <div className="relative w-11 md:w-12.5 h-11 md:h-12.5 shrink-0">
+        <TokenIcon
+          src={token.icon}
+          symbol={token.symbol}
+          blockchain={token.blockchain}
+          containerClassName="w-full h-full"
+        />
         <img
           src={token.chainIcon}
           className="absolute right-[-5px] bottom-[-5px] w-5 md:w-6 h-5 md:h-6 rounded-[6px] border border-white object-center object-contain shrink-0"
