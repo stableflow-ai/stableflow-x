@@ -1,5 +1,6 @@
 import Big from "big.js";
 import { csl } from "@/utils/log";
+import { DEFAULT_ZCASH_TRANSFER_FEE_ZATOSHI } from "@/services/rhea/config";
 import {
   get_balance_zcash,
   sign_message_zcash,
@@ -149,6 +150,28 @@ export default class ZcashWallet {
       address: result.address,
       signingMode: result.signingMode,
       message,
+    };
+  }
+
+  /**
+   * Estimate Zcash transfer fee. Noir SDK does not expose a fee quote;
+   * use a fixed transparent-transfer heuristic (also for manual/QR mode).
+   */
+  async estimateTransferGas(_data?: {
+    fromToken?: any;
+    depositAddress?: string;
+    amount?: string;
+    account?: string;
+  }): Promise<{
+    gasLimit: bigint;
+    gasPrice: bigint;
+    estimateGas: bigint;
+  }> {
+    const estimateGas = BigInt(DEFAULT_ZCASH_TRANSFER_FEE_ZATOSHI);
+    return {
+      gasLimit: estimateGas,
+      gasPrice: 1n,
+      estimateGas,
     };
   }
 }

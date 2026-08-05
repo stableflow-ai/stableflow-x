@@ -38,6 +38,10 @@ export type RheaNormalizedQuote = {
   timeEstimate?: number;
   fee: RheaFeeItem[];
   totalFeeUsd?: number;
+  /** Source-chain gas in native smallest units */
+  estimateSourceGas?: string;
+  estimateSourceGasUsd?: number;
+  estimateSourceGasLimit?: string;
   priceImpactUsd?: string;
   priceImpactUsdPercent?: string;
   executionType?: string;

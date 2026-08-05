@@ -3,6 +3,7 @@ import { rheaSwapApi } from "./client";
 import { buildAppFees } from "./config";
 import {
   formatFeeItems,
+  resolveEstimateSourceGas,
   resolveQuoteFees,
   resolveTokenUsdPrice,
   type FeeContext,
@@ -146,7 +147,9 @@ export function normalizeQuote(
   const route = (q.raw as any)?.route;
   const estimatedOutUsd =
     (q.estimatedOutUsd as string | number | undefined) ?? route?.outputAmountUsd;
-  const { fee, totalFeeUsd } = formatFeeItems(resolveQuoteFees(q, ctx));
+  const { fees: rawFees, swapkitSourceGas } = resolveQuoteFees(q, ctx);
+  const { fee, totalFeeUsd } = formatFeeItems(rawFees);
+  const sourceGas = resolveEstimateSourceGas(q, ctx, swapkitSourceGas);
   const priceImpact = pickPriceImpact(q, route, estimatedOutUsd, ctx, estimatedOut);
 
   return {
@@ -162,6 +165,9 @@ export function normalizeQuote(
     timeEstimate: typeof q.timeEstimate === "number" ? q.timeEstimate : undefined,
     fee,
     totalFeeUsd,
+    estimateSourceGas: sourceGas.estimateSourceGas,
+    estimateSourceGasUsd: sourceGas.estimateSourceGasUsd,
+    estimateSourceGasLimit: sourceGas.estimateSourceGasLimit,
     ...priceImpact,
     executionType: q.executionType != null ? asString(q.executionType) : undefined,
     fromChain: q.fromChain != null ? asString(q.fromChain) : undefined,

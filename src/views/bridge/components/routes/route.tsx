@@ -18,7 +18,7 @@ const QuoteRoute = (props: any) => {
   const routerName = data?.routerName || getRouterDisplayName(router);
   const logo = getRouterLogo(router, isMobile);
   const estimateTime = data?.timeEstimate ?? data?.estimateTime ?? 0;
-  const totalFeeUsd = data?.totalFeeUsd ?? 0;
+  const totalFeeUsd = Number(data?.totalFeeUsd || 0) + Number(data?.estimateSourceGasUsd || 0);
 
   return (
     <motion.div

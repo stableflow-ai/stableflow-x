@@ -24,6 +24,7 @@ import { addTradeReport } from "@/stores/use-trade-report";
 import { formatBridgeError, formatRheaQuoteErrorMessage, isReQuoteError, isUserRejectedError, sortQuoteData } from "../utils";
 import { useTrack } from "@/hooks/use-track";
 import { tokenAddressForQuote, tokenHttpChainId } from "@/services/rhea/tokens";
+import { estimateSourceGasFromTransferResult } from "@/services/rhea/fee";
 import { executeRheaTx } from "@/libs/wallets/execute-rhea-tx";
 import { rheaReport, pollRheaOrderStatus } from "@/services/rhea/status";
 import { ZCASH_MANUAL_WALLET_NAME } from "@/libs/wallets/zcash/wallet";
@@ -178,6 +179,9 @@ export default function useBridge(_props?: any) {
             timeEstimate: q.timeEstimate,
             fee: q.fee,
             totalFeeUsd: q.totalFeeUsd,
+            estimateSourceGas: q.estimateSourceGas,
+            estimateSourceGasUsd: q.estimateSourceGasUsd,
+            estimateSourceGasLimit: q.estimateSourceGasLimit,
             priceImpactUsd: q.priceImpactUsd,
             priceImpactUsdPercent: q.priceImpactUsdPercent,
             normalized: q,
@@ -212,6 +216,45 @@ export default function useBridge(_props?: any) {
 
       if (autoKey) {
         bridgeStore.set({ quoteDataService: autoKey, shouldAutoSelect: false });
+      }
+
+      // Refine nearintents source gas via wallet.estimateTransferGas when available
+      const walletEntry = wallets[fromToken.chainType as WalletType];
+      const walletInst = walletEntry?.wallet;
+      if (typeof walletInst?.estimateTransferGas === "function") {
+        const depositAddress =
+          walletEntry?.account || BridgeDefaultWallets[fromToken.chainType as WalletType];
+        void Promise.all(
+          nextMapEntries
+            .filter(([, v]) => String(v.router || "").toLowerCase() === "nearintents")
+            .map(async ([key, value]) => {
+              try {
+                const ett = await walletInst.estimateTransferGas({
+                  fromToken,
+                  depositAddress,
+                  amount: amountWei,
+                  account: depositAddress,
+                });
+                if (requestId !== requestIdRef.current) return;
+                const refined = estimateSourceGasFromTransferResult(
+                  ett.estimateGas,
+                  { fromToken, toToken, amountIn: amountWei },
+                  ett.gasLimit
+                );
+                if (refined.estimateSourceGasUsd == null && !refined.estimateSourceGas) return;
+                bridgeStore.setQuoteData(key, {
+                  ...value,
+                  ...refined,
+                  normalized: {
+                    ...value.normalized,
+                    ...refined,
+                  },
+                });
+              } catch (error) {
+                csl("useBridge", "yellow-600", "nearintents estimateTransferGas failed: %o", error);
+              }
+            })
+        );
       }
     } catch (error: any) {
       if (requestId !== requestIdRef.current) return;

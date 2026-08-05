@@ -1,8 +1,15 @@
 import { getBtcGasPrice } from "btc-wallet";
 import { csl } from "@/utils/log";
+import {
+  DEFAULT_BTC_FEE_RATE_SAT_PER_VB,
+  DEFAULT_BTC_TRANSFER_VSIZE,
+} from "@/services/rhea/config";
 
 const ESPLORA_UTXO_URL = "https://blockstream.info/api/address";
-const DEFAULT_FEE_RATE = 5;
+const DEFAULT_FEE_RATE = DEFAULT_BTC_FEE_RATE_SAT_PER_VB;
+const P2WPKH_INPUT_VSIZE = 68;
+const P2WPKH_OUTPUT_VSIZE = 31;
+const TX_OVERHEAD_VSIZE = 10;
 
 type SendBitcoinFn = (
   toAddress: string,
@@ -120,6 +127,67 @@ export default class BtcWallet {
 
     const feeRate = await this.resolveFeeRate(null);
     return await this.sendBitcoin(to, satoshis, { feeRate });
+  }
+
+  /**
+   * Estimate BTC transfer fee: feeRate (sat/vB) * vsize.
+   * Uses UTXO count when account is available; otherwise 1-in / 2-out default.
+   */
+  async estimateTransferGas(data: {
+    fromToken?: any;
+    depositAddress?: string;
+    amount?: string;
+    account?: string;
+  }): Promise<{
+    gasLimit: bigint;
+    gasPrice: bigint;
+    estimateGas: bigint;
+  }> {
+    const feeRate = await this.resolveFeeRate(null);
+    let inputCount = 1;
+
+    const account = data.account || this.account;
+    if (account) {
+      try {
+        const res = await fetch(`${ESPLORA_UTXO_URL}/${account}/utxo`);
+        if (res.ok) {
+          const utxos = (await res.json()) as Array<{
+            value: number;
+            status?: { confirmed?: boolean };
+          }>;
+          const confirmed = utxos.filter((u) => u?.status?.confirmed !== false);
+          const amountSats = Number(data.amount || 0);
+          if (Number.isFinite(amountSats) && amountSats > 0 && confirmed.length > 0) {
+            let sum = 0;
+            let used = 0;
+            const sorted = [...confirmed].sort((a, b) => (b.value || 0) - (a.value || 0));
+            for (const u of sorted) {
+              sum += Number(u.value) || 0;
+              used += 1;
+              if (sum >= amountSats) break;
+            }
+            inputCount = Math.max(1, used);
+          } else if (confirmed.length > 0) {
+            inputCount = 1;
+          }
+        }
+      } catch (error) {
+        csl("BTC estimateTransferGas", "yellow-600", "utxo fetch failed: %o", error);
+      }
+    }
+
+    const outputCount = 2; // recipient + change
+    const vsize =
+      inputCount > 0
+        ? inputCount * P2WPKH_INPUT_VSIZE + outputCount * P2WPKH_OUTPUT_VSIZE + TX_OVERHEAD_VSIZE
+        : DEFAULT_BTC_TRANSFER_VSIZE;
+    const estimateGas = BigInt(Math.ceil(feeRate * vsize));
+
+    return {
+      gasLimit: BigInt(vsize),
+      gasPrice: BigInt(Math.ceil(feeRate)),
+      estimateGas,
+    };
   }
 
   async signRheaRequest(req: any): Promise<Record<string, unknown>> {

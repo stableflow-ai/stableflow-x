@@ -314,7 +314,13 @@ export default function Networks({ addressValidation, onRefreshQuote, isRoutes =
                               </div>
                             ) : (
                               <div className="">
-                                {formatNumber(quoteData?.totalFeeUsd || 0, 2, true, { prefix: "$", isZeroPrecision: true, round: Big.roundDown })}
+                                {formatNumber(
+                                  Number(quoteData?.totalFeeUsd || 0) +
+                                    Number(quoteData?.estimateSourceGasUsd || 0),
+                                  2,
+                                  true,
+                                  { prefix: "$", isZeroPrecision: true, round: Big.roundDown }
+                                )}
                               </div>
                             )
                           }
