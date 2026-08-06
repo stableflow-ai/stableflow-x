@@ -23,6 +23,7 @@ const PendingTransfer = (props: any) => {
     latestHistories,
     closeLatestHistory,
     updateStatus,
+    requestPendingRefresh,
   } = useHistoryStore();
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -73,6 +74,7 @@ const PendingTransfer = (props: any) => {
         timerRef.current = null;
 
         updateStatus(deposit_address, result.status === TradeStatus.Success ? "SUCCESS" : "FAILED");
+        requestPendingRefresh();
       }
 
       return result;

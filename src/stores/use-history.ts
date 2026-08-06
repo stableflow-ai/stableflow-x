@@ -10,6 +10,8 @@ interface HistoryState {
   latestHistories?: string[];
   openDrawer: boolean;
   pendingNumber: number;
+  /** Bumped to ask Bridge autoPoll usePendingHistory to refetch /v1/trades */
+  pendingRefreshNonce: number;
   servicePendingNumber: Partial<Record<Service, number>>;
   servicePendingNumberWithPermit: Partial<Record<Service, number>>;
   setOpenDrawer: (open?: boolean) => void;
@@ -18,6 +20,7 @@ interface HistoryState {
   closeLatestHistory: (address?: string) => void;
   updateHistory: (address?: string, item?: any) => void;
   updatePendingNumber: (number: number) => void;
+  requestPendingRefresh: () => void;
   updateServicePendingNumber: (params: { services?: Partial<Record<Service, number>>, isClear?: boolean }) => void;
   updateServicePendingNumberWithPermit: (params: { services?: Partial<Record<Service, number>>, isClear?: boolean }) => void;
 }
@@ -30,6 +33,7 @@ export const useHistoryStore = create(
       pendingStatus: [],
       completeStatus: [],
       pendingNumber: 0,
+      pendingRefreshNonce: 0,
       servicePendingNumber: {},
       servicePendingNumberWithPermit: {},
       addHistory: (item: any) => {
@@ -93,6 +97,9 @@ export const useHistoryStore = create(
       updatePendingNumber: (number: number) => {
         set({ pendingNumber: number });
       },
+      requestPendingRefresh: () => {
+        set({ pendingRefreshNonce: get().pendingRefreshNonce + 1 });
+      },
       updateServicePendingNumber: (params) => {
         const { services, isClear } = params;
         if (isClear) {
@@ -113,7 +120,11 @@ export const useHistoryStore = create(
     {
       name: "_history",
       version: 0.1,
-      storage: createJSONStorage(() => localStorage)
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => {
+        const { pendingRefreshNonce: _nonce, ...rest } = state;
+        return rest as HistoryState;
+      },
     }
   )
 );

@@ -18,7 +18,6 @@ import { BridgeDefaultWallets, PRICE_IMPACT_THRESHOLD } from "@/config";
 import { formatNumber } from "@/utils/format/number";
 import { Service, ServiceBackend } from "@/services/constants";
 import { useAccount, useSwitchChain } from "wagmi";
-import { usePendingHistory } from "@/views/history/hooks/use-pending-history";
 import { csl } from "@/utils/log";
 import { addTradeReport } from "@/stores/use-trade-report";
 import { formatBridgeError, formatRheaQuoteErrorMessage, isReQuoteError, isUserRejectedError, sortQuoteData } from "../utils";
@@ -26,7 +25,7 @@ import { useTrack } from "@/hooks/use-track";
 import { tokenAddressForQuote, tokenHttpChainId } from "@/services/rhea/tokens";
 import { estimateSourceGasFromTransferResult } from "@/services/rhea/fee";
 import { executeRheaTx } from "@/libs/wallets/execute-rhea-tx";
-import { rheaReport, pollRheaOrderStatus } from "@/services/rhea/status";
+import { rheaReport } from "@/services/rhea/status";
 import { ZCASH_MANUAL_WALLET_NAME } from "@/libs/wallets/zcash/wallet";
 
 const TRANSFER_MIN_AMOUNT = import.meta.env.VITE_TRANSFER_MIN_AMOUNT || 0.0001;
@@ -48,7 +47,6 @@ const fromBaseUnits = (amount: string, decimals: number) => {
 };
 
 export default function useBridge(_props?: any) {
-  const { debouncedGetList: getPendingList } = usePendingHistory({ autoPoll: false });
   const wallets = useWalletsStore();
   const historyStore = useHistoryStore();
   const configStore = useConfigStore();
@@ -500,7 +498,9 @@ export default function useBridge(_props?: any) {
           router,
           volume,
         };
-        addTradeReport(reportData);
+        addTradeReport(reportData).then(() => {
+          historyStore.requestPendingRefresh();
+        });
         historyStore.addHistory({
           depositAddress: hash,
           time: Date.now(),
@@ -513,7 +513,6 @@ export default function useBridge(_props?: any) {
           txHash: hash,
         });
         historyStore.updateStatus(hash, "PENDING_DEPOSIT");
-        getPendingList();
         addTransferTrack({
           ...addTrackParams,
           txHash: hash,
@@ -539,9 +538,6 @@ export default function useBridge(_props?: any) {
             swapId: orderId,
             is_cross_chain: swap.isCrossChain ?? fromChain !== toChain,
           });
-          if (orderId && router) {
-            void pollRheaOrderStatus({ orderId, router });
-          }
         } catch (reportErr) {
           csl("useBridge", "yellow-600", "rhea report failed: %o", reportErr);
         }
@@ -582,7 +578,9 @@ export default function useBridge(_props?: any) {
         router,
         volume,
       };
-      addTradeReport(reportData);
+      addTradeReport(reportData).then(() => {
+        historyStore.requestPendingRefresh();
+      });
       if (depositAddress) {
         historyStore.addHistory({
           depositAddress,
@@ -597,7 +595,6 @@ export default function useBridge(_props?: any) {
         });
         historyStore.updateStatus(depositAddress, "PENDING_DEPOSIT");
       }
-      getPendingList();
       addTransferTrack({
         ...addTrackParams,
         txHash,
@@ -624,10 +621,6 @@ export default function useBridge(_props?: any) {
             swapId: execOrderId,
             is_cross_chain: swap.isCrossChain ?? fromChain !== toChain,
           });
-          const statusRouter = swap.statusRouter || router;
-          if (execOrderId && statusRouter) {
-            void pollRheaOrderStatus({ orderId: execOrderId, router: statusRouter });
-          }
         } catch (reportErr) {
           csl("useBridge", "yellow-600", "rhea report failed: %o", reportErr);
         }

@@ -6,8 +6,8 @@ import useBridgeStore from "@/stores/use-bridge";
 import useCopy from "@/hooks/use-copy";
 import useToast from "@/hooks/use-toast";
 import { addTradeReport } from "@/stores/use-trade-report";
-import { rheaReport, pollRheaOrderStatus } from "@/services/rhea/status";
-import { usePendingHistory } from "@/views/history/hooks/use-pending-history";
+import { rheaReport } from "@/services/rhea/status";
+import { useHistoryStore } from "@/stores/use-history";
 import { csl } from "@/utils/log";
 import { numberRemoveEndZero } from "@/utils/format/number";
 import { useTrack } from "@/hooks/use-track";
@@ -18,7 +18,7 @@ export default function ZcashDepositModal() {
   const depositInfo = bridgeStore.depositInfo;
   const { onCopy } = useCopy();
   const toast = useToast();
-  const { debouncedGetList: getPendingList } = usePendingHistory({ autoPoll: false });
+  const requestPendingRefresh = useHistoryStore((s) => s.requestPendingRefresh);
   const { addTransfer: addTransferTrack } = useTrack();
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,8 +57,9 @@ export default function ZcashDepositModal() {
         router,
         volume: depositInfo.volume ?? reportBase.volume,
       };
-      addTradeReport(reportData);
-      getPendingList();
+      addTradeReport(reportData).then(() => {
+        requestPendingRefresh();
+      });
 
       if (depositInfo.selectedQuote) {
         addTransferTrack({
@@ -92,10 +93,6 @@ export default function ZcashDepositModal() {
             depositInfo.selectedQuote?.isCrossChain ??
             (fromChain !== toChain && !!fromChain && !!toChain),
         });
-
-        if (orderId && router) {
-          void pollRheaOrderStatus({ orderId, router });
-        }
       } catch (reportErr) {
         csl("ZcashDepositModal", "yellow-600", "rhea report failed: %o", reportErr);
       }

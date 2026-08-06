@@ -2,7 +2,7 @@ import { Service } from "./constants";
 import { rheaQuote } from "./rhea/quote";
 import { rheaSwap } from "./rhea/swap";
 import { executeRheaSwapResponse } from "./rhea/execute";
-import { rheaReport, rheaOrderStatus, pollRheaOrderStatus } from "./rhea/status";
+import { rheaReport } from "./rhea/status";
 import { fetchRheaTokens, getCachedRheaTokens, tokenAddressForQuote, tokenHttpChainId } from "./rhea/tokens";
 
 export const rheaService = {
@@ -10,8 +10,6 @@ export const rheaService = {
   swap: rheaSwap,
   execute: executeRheaSwapResponse,
   report: rheaReport,
-  orderStatus: rheaOrderStatus,
-  pollOrderStatus: pollRheaOrderStatus,
   fetchTokens: fetchRheaTokens,
   getCachedTokens: getCachedRheaTokens,
   tokenAddressForQuote,

@@ -145,6 +145,9 @@ export function usePendingHistory(options?: UsePendingHistoryOptions | any) {
     wait: 1000,
   });
 
+  const pendingRefreshNonce = useHistoryStore((s) => s.pendingRefreshNonce);
+  const lastRefreshNonceRef = useRef(pendingRefreshNonce);
+
   useEffect(() => {
     if (!autoPoll) {
       return () => {
@@ -192,6 +195,18 @@ export function usePendingHistory(options?: UsePendingHistoryOptions | any) {
       }
     };
   }, [accounts, autoPoll]);
+
+  // Bridge autoPoll instance: refetch when transfer / card terminal requests refresh
+  useEffect(() => {
+    if (!autoPoll || !accounts) return;
+    if (lastRefreshNonceRef.current === pendingRefreshNonce) return;
+    lastRefreshNonceRef.current = pendingRefreshNonce;
+    if (pendingRefreshNonce <= 0) return;
+    getList({
+      address: accounts,
+      page: 1,
+    });
+  }, [pendingRefreshNonce, autoPoll, accounts]);
 
   return {
     list,

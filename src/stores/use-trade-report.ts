@@ -49,15 +49,15 @@ const scheduleRetry = (id: string, payload: Record<string, any>, retryCount: num
       currentMeta.timer = undefined;
       taskMetaMap.set(id, currentMeta);
     }
-    void processReport(id, payload, retryCount + 1);
+    void processReport(id, payload, retryCount + 1).catch(() => {});
   }, delay);
   taskMetaMap.set(id, meta);
 };
 
-const processReport = async (id: string, payload: Record<string, any>, retryCount = 0) => {
+const processReport = async (id: string, payload: Record<string, any>, retryCount = 0): Promise<void> => {
   const meta = taskMetaMap.get(id);
   if (meta?.inFlight) {
-    return;
+    throw new Error("Trade report already in flight");
   }
 
   taskMetaMap.set(id, {
@@ -76,6 +76,7 @@ const processReport = async (id: string, payload: Record<string, any>, retryCoun
       inFlight: false,
     });
     scheduleRetry(id, payload, retryCount);
+    throw error;
   }
 };
 
@@ -101,7 +102,8 @@ export const useTradeReportStore = create(persist<TradeReportState>(
   },
 ));
 
-export const addTradeReport = (payload: Record<string, any>) => {
+/** Enqueues report and returns a Promise that resolves when the first POST succeeds. */
+export const addTradeReport = (payload: Record<string, any>): Promise<void> => {
   const item: TradeReportItem = {
     id: uuidV4(),
     payload: {
@@ -111,7 +113,7 @@ export const addTradeReport = (payload: Record<string, any>) => {
     createdAt: Date.now(),
   };
   useTradeReportStore.getState().enqueue(item);
-  void processReport(item.id, item.payload, 0);
+  return processReport(item.id, item.payload, 0);
 };
 
 export const processAllPendingTradeReports = () => {
@@ -121,7 +123,7 @@ export const processAllPendingTradeReports = () => {
     if (meta?.inFlight || meta?.timer) {
       return;
     }
-    void processReport(item.id, item.payload, 0);
+    void processReport(item.id, item.payload, 0).catch(() => {});
   });
 };
 
