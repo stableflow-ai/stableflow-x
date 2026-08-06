@@ -7,30 +7,40 @@ import { useHistoryStore } from "@/stores/use-history";
 import { getRouterDisplayName, getRouterLogo } from "@/services/constants";
 import { getStableflowIcon } from "@/utils/format/logo";
 import TokenIcon from "@/components/token-icon";
+import { PendingSkeleton, PendingTitleSkeleton } from "./loading";
 
 export default function Pending(props: any) {
   const { className, isTitle = true, contentClassName, history } = props;
 
   const pendingLength = history.page.total || history.list.length;
+  const showSkeleton = history.loading && !history.list.length;
 
   return (
     <div className={clsx("mt-[12px] rounded-[12px] px-[15px] md:px-[30px] pt-[20px] pb-[30px] bg-white border border-[#F2F2F2] shadow-[0_0_6px_0_rgba(0,0,0,0.10)]", className)}>
       {
         isTitle && (
           <div className="text-[16px] font-[500]">
-            {pendingLength} Pending transfers
+            {showSkeleton ? (
+              <PendingTitleSkeleton />
+            ) : (
+              <>{pendingLength} Pending transfers</>
+            )}
           </div>
         )
       }
       <div className={clsx("mt-[14px] grid grid-cols-1 md:grid-cols-2 gap-[18px]", contentClassName)}>
-        {history.list.map((item: any, index: number) => (
-          <PendingItem
-            key={index}
-            data={item}
-          />
-        ))}
+        {showSkeleton ? (
+          <PendingSkeleton />
+        ) : (
+          history.list.map((item: any, index: number) => (
+            <PendingItem
+              key={index}
+              data={item}
+            />
+          ))
+        )}
       </div>
-      {pendingLength === 0 && (
+      {!showSkeleton && pendingLength === 0 && (
         <div className="text-[14px] font-[300] opacity-50 text-center">
           No Data.
         </div>

@@ -3,25 +3,24 @@ import { formatNumber } from "@/utils/format/number";
 import clsx from "clsx";
 import useIsMobile from "@/hooks/use-is-mobile";
 import Pagination from "@/components/pagination";
-import Loading from "@/components/loading/icon";
 import TokenIcon from "@/components/token-icon";
 import { TradeStatus, TradeStatusMap } from "@/config/trade";
 import ContinueTransfer from "./continue";
+import { CompleteTransfersSkeleton } from "./loading";
 
 export default function CompleteTransfers(props: any) {
   const { className, contentClassName, history } = props;
 
   const isMobile = useIsMobile();
+  const showSkeleton = history.loading && !history.list.length;
 
   return (
     <div className={clsx("mt-[12px] rounded-[12px] px-[30px] pt-[20px] pb-[30px] bg-white border border-[#F2F2F2] shadow-[0_0_6px_0_rgba(0,0,0,0.10)]", className)}>
       <div className="text-[16px] font-[500] text-[#444C59]">History transfers</div>
       <div className={clsx("mt-[14px] w-full overflow-x-auto", contentClassName)}>
         {
-          (history.loading && !history.list.length) ? (
-            <div className="w-full min-h-[200px] flex justify-center items-center">
-              <Loading size={16} />
-            </div>
+          showSkeleton ? (
+            <CompleteTransfersSkeleton />
           ) : (
             !history.list.length ? (
               <div className="text-[14px] font-[300] h-[200px] flex items-center justify-center opacity-50 text-center">
