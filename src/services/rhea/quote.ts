@@ -264,7 +264,7 @@ export async function rheaQuote(params: QuoteParams) {
     toToken: params.toToken,
   });
 
-  const data = await rheaSwapApi<RheaQuoteResponse>("/quote", {
+  const data = await rheaSwapApi<RheaQuoteResponse>("/all_quote", {
     method: "POST",
     body: JSON.stringify({
       fromChain: params.fromChain,
