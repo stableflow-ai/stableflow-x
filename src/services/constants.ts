@@ -47,7 +47,7 @@ export const RouterLogoMap: Record<string, string> = {
   bungee: getStableflowRouteLogo("logo-bungee.svg"),
   swapkit: getStableflowRouteLogo("logo-swapkit.svg"),
   omnibridge: getStableflowRouteLogo("logo-omni.svg"),
-  stableflow: getStableflowLogo("logo-stableflow-full.svg"),
+  stableflow: getStableflowLogo("logo-stableflow-full-2.svg"),
 };
 
 export const RouterLogoSimpleMap: Record<string, string> = {
